@@ -9,4 +9,7 @@ const axiosInstance = axios.create({
   },
 });
 
+
+export const getTasks = () => axiosInstance.get('/tasks');
+
 // export default axiosInstance;
