@@ -9,9 +9,18 @@ const axiosInstance = axios.create({
   },
 });
 
+interface Task {
+  id: number;
+  title: string;
+  dueDate: string;
+  status: string[];
+  priority: string;
+}
 
 export const getTasks = () => axiosInstance.get('/tasks');
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
+
+export const updateTask = (task: Task) => axiosInstance.put(`/tasks/${task.id}`, task);
 
 // export default axiosInstance;

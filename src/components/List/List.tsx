@@ -14,13 +14,13 @@ import {
   TextField,
 } from '@mui/material';
 import { connect } from 'react-redux';
-import { Task } from '../../types';
+import { Task, TaskStatus } from '../../types';
 import { statusColors } from '../../utils/colors';
-import { getTasksThunk, removeTaskThunk } from '../../store/slices/taskSlice';
+import { getTasksThunk, removeTaskThunk, updateTaskThunk } from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
 
 
-const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId: number) => void }> = ({ tasks, getTasks, removeTask }) => {
+const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId: number) => void; updateTask: (updatedTask: Task) => void; }> = ({ tasks, getTasks, removeTask, updateTask }) => {
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +44,7 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
       removeTask(taskId);
     });
     setSelectedTasks([]);
+
   };
 
   const handleRowClick = (task: Task) => {
@@ -53,6 +54,22 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleStatusToggle = (status: TaskStatus) => {
+    if (!selectedTask) return;
+
+    const updatedStatus = selectedTask.status.includes(status)
+      ? selectedTask.status.filter((s) => s !== status) // Remove status
+      : [...selectedTask.status, status]; // Add status
+
+    const updatedTask = { ...selectedTask, status: updatedStatus };
+
+    // Update local state
+    setSelectedTask(updatedTask);
+
+    // Dispatch Redux action to update task in the store and database
+    updateTask(updatedTask);
+  };
   return (
     <Box display="flex" flexDirection="column" alignItems="center" p={4} gap={2}>
         <TextField
@@ -166,18 +183,15 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
                 Status:
               </Typography>
               <Box display="flex" gap={1} mt={1}>
-                {selectedTask.status.map((status) => (
-                  <Box key={status} display="flex" alignItems="center" gap={1}>
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '3px',
-                        backgroundColor: statusColors[status],
-                      }}
-                    />
-                    <Typography variant="body2">{status}</Typography>
-                  </Box>
+                {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
+                  <Button
+                    key={status}
+                    variant={selectedTask.status.includes(status as TaskStatus) ? 'contained' : 'outlined'}
+                    sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
+                    onClick={() => handleStatusToggle(status as TaskStatus)}
+                  >
+                    {status}
+                  </Button>
                 ))}
               </Box>
             </Box>
@@ -194,7 +208,8 @@ const mapStateToProps = ({ tasks: { tasks } }: any) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   getTasks: () => dispatch(getTasksThunk()),
-  removeTask: (id: number) => dispatch(removeTaskThunk(id))
+  removeTask: (id: number) => dispatch(removeTaskThunk(id)),
+  updateTask: (task: Task) => dispatch(updateTaskThunk(task)),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(List);
