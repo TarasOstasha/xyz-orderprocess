@@ -11,17 +11,21 @@ import {
   Typography,
   Button,
   Checkbox,
+  TextField,
 } from '@mui/material';
 import { connect } from 'react-redux';
 import { Task } from '../../types';
 import { statusColors } from '../../utils/colors';
-import { getTasksThunk } from '../../store/slices/TaskSlice';
+import { getTasksThunk, removeTaskThunk } from '../../store/slices/taskSlice';
+import styles from './List.module.scss';
 
-const List: React.FC<{ tasks: Task[]; getTasks: () => void }> = ({ tasks, getTasks }) => {
+
+const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId: number) => void }> = ({ tasks, getTasks, removeTask }) => {
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // ✅ Fetch tasks from API when component mounts
+  // Fetch tasks from API when component mounts
   useEffect(() => {
     getTasks();
   }, [getTasks]);
@@ -35,6 +39,10 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void }> = ({ tasks, getTas
 
   // Remove selected tasks
   const handleDeleteSelected = () => {
+    selectedTasks.forEach(taskId => {
+      console.log(taskId)
+      removeTask(taskId);
+    });
     setSelectedTasks([]);
   };
 
@@ -42,8 +50,20 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void }> = ({ tasks, getTas
     setSelectedTask((prev) => (prev?.id === task.id ? null : task));
   };
 
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   return (
     <Box display="flex" flexDirection="column" alignItems="center" p={4} gap={2}>
+        <TextField
+            label="Search Tasks"
+            variant="standard"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ width: '500px' }}
+            className={styles.searchTask}
+          />
       {/* ✅ Only show delete button if tasks exist */}
       {tasks.length > 0 && selectedTasks.length > 0 && (
         <Button
@@ -59,6 +79,7 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void }> = ({ tasks, getTas
       {/* ✅ Hide table & details if no tasks */}
       {tasks.length > 0 && (
         <Box display="flex" justifyContent="center" gap={3} alignItems="flex-start">
+          
           {/* TASK TABLE */}
           <TableContainer component={Paper} sx={{ maxWidth: 600, flex: 1 }}>
             <Table>
@@ -80,7 +101,7 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void }> = ({ tasks, getTas
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tasks.map((task) => (
+                {filteredTasks.map((task) => (
                   <TableRow
                     key={task.id}
                     onClick={() => handleRowClick(task)}
@@ -173,6 +194,7 @@ const mapStateToProps = ({ tasks: { tasks } }: any) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   getTasks: () => dispatch(getTasksThunk()),
+  removeTask: (id: number) => dispatch(removeTaskThunk(id))
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(List);

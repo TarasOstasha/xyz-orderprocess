@@ -53,6 +53,90 @@ const initialTasks: Task[] = [
     status: ['Completed', 'On Hold'],
     priority: 'Low',
   },
+  {
+    id: 5,
+    title: 'Finish report',
+    dueDate: '2024-02-21',
+    status: ['Pending', 'Review'],
+    priority: 'High',
+  },
+  {
+    id: 6,
+    title: 'Call client',
+    dueDate: '2024-02-22',
+    status: ['In Progress'],
+    priority: 'Medium',
+  },
+  {
+    id: 7,
+    title: 'Prepare slides',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
+  {
+    id: 8,
+    title: 'Prepare slides2',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
+  {
+    id: 9,
+    title: 'Finish report',
+    dueDate: '2024-02-21',
+    status: ['Pending', 'Review'],
+    priority: 'High',
+  },
+  {
+    id: 10,
+    title: 'Call client',
+    dueDate: '2024-02-22',
+    status: ['In Progress'],
+    priority: 'Medium',
+  },
+  {
+    id: 11,
+    title: 'Prepare slides',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
+  {
+    id: 12,
+    title: 'Prepare slides2',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
+  {
+    id: 13,
+    title: 'Finish report',
+    dueDate: '2024-02-21',
+    status: ['Pending', 'Review'],
+    priority: 'High',
+  },
+  {
+    id: 14,
+    title: 'Call client',
+    dueDate: '2024-02-22',
+    status: ['In Progress'],
+    priority: 'Medium',
+  },
+  {
+    id: 15,
+    title: 'Prepare slides',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
+  {
+    id: 16,
+    title: 'Prepare slides2',
+    dueDate: '2024-02-23',
+    status: ['Completed', 'On Hold'],
+    priority: 'Low',
+  },
 ];
 
 const TASKS_SLICE_NAME = 'tasks';
@@ -87,6 +171,52 @@ export const getTasksThunk = createAsyncThunk<Task[], void, { rejectValue: TaskE
   }
 );
 
+// export const removeTaskThunk = createAsyncThunk<Task[], string, { rejectValue: TaskError }>(
+//   `${TASKS_SLICE_NAME}/remove`,
+//   async (id: string, thunkAPI) => {
+//     try {
+//       await API.removeTaskById(id); 
+//       return id; 
+//     } catch (err: unknown) {
+//       if (err instanceof AxiosError) {
+//         return thunkAPI.rejectWithValue({
+//           status: err.response?.status || 500,
+//           message: err.response?.data?.errors || 'Unknown error',
+//         });
+//       }
+//       return thunkAPI.rejectWithValue({
+//         status: 500,
+//         message: 'Unexpected error',
+//       });
+//     }
+//   }
+// )
+
+export const removeTaskThunk = createAsyncThunk<
+  number, 
+  number, 
+  { rejectValue: TaskError }
+>(
+  'tasks/remove',
+  async (taskId, thunkAPI) => {
+    try {
+      //await API.removeTaskById(taskId); 
+      return taskId;
+    } catch (err: unknown) {
+      if (err instanceof AxiosError) {
+        return thunkAPI.rejectWithValue({
+          status: err.response?.status || 500,
+          message: err.response?.data?.errors || 'Unknown error',
+        });
+      }
+      return thunkAPI.rejectWithValue({
+        status: 500,
+        message: 'Unexpected error',
+      });
+    }
+  }
+);
+
 const tasksSlice = createSlice({
   name: TASKS_SLICE_NAME,
   initialState,
@@ -101,11 +231,25 @@ const tasksSlice = createSlice({
         state.isFetching = false;
         state.tasks = action.payload;
       })
-      // ✅ Fix: Ensure `action.payload` is correctly typed as `TaskError`
       .addCase(getTasksThunk.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
         state.isFetching = false;
         state.error = action.payload || { status: 500, message: 'Unknown error' };
-      });
+      })
+      .addCase(removeTaskThunk.pending, state => {
+        state.isFetching = true;
+        state.error = null;
+      })
+      .addCase(removeTaskThunk.fulfilled, (state, { payload }) => {
+        state.isFetching = false;
+        const deletedTaskIndex = state.tasks.findIndex(t => t.id === payload);
+        if (deletedTaskIndex !== -1) {
+          state.tasks.splice(deletedTaskIndex, 1);
+        }
+      })
+      .addCase(removeTaskThunk.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
+        state.isFetching = false;
+        state.error = action.payload || { status: 500, message: 'Unknown error' };
+      })
   },
 });
 

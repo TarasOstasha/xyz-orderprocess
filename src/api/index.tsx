@@ -12,4 +12,6 @@ const axiosInstance = axios.create({
 
 export const getTasks = () => axiosInstance.get('/tasks');
 
+export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
+
 // export default axiosInstance;
