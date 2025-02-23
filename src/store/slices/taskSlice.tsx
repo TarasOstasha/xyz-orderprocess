@@ -147,6 +147,33 @@ const initialState: TasksState = {
   error: null,
 };
 
+
+
+// task.create
+export const createTaskThunk = createAsyncThunk<Task, Task, { rejectValue: TaskError }>(
+  `${TASKS_SLICE_NAME}/create`,
+  async (newTask, thunkAPI) => {
+    console.log(newTask, 'newTask')
+    try {
+      //const response = await API.createTask(newTask); // Ensure your API supports this
+      //return response.data; // Assuming your API returns the created task
+      return newTask
+    } catch (err: unknown) {
+      if (err instanceof AxiosError) {
+        return thunkAPI.rejectWithValue({
+          status: err.response?.status || 500,
+          message: err.response?.data?.errors || 'Unknown error',
+        });
+      }
+      return thunkAPI.rejectWithValue({
+        status: 500,
+        message: 'Unexpected error',
+      });
+    }
+  }
+);
+
+
 // tasks/get
 export const getTasksThunk = createAsyncThunk<Task[], void, { rejectValue: TaskError }>(
   `${TASKS_SLICE_NAME}/get`,
@@ -254,25 +281,10 @@ const tasksSlice = createSlice({
         state.isFetching = true;
         state.error = null;
       })
-      // .addCase(updateTaskThunk.fulfilled, (state, { payload }) => {
-      //   state.isFetching = false;
-      //   console.log(payload, state)
-      //   const taskIndex = state.tasks.findIndex(t => t.id === payload.id);
-      
-      //   if (taskIndex !== -1) {
-      //     // Overwrite the task with the updated data from API
-      //     state.tasks[taskIndex] = payload;
-      //   }
-      //   console.log(state)
-      // })
       .addCase(updateTaskThunk.fulfilled, (state, { payload }) => {
         state.isFetching = false;
-      
-        // Find the task index in test data
         const taskIndex = state.tasks.findIndex(t => t.id === payload.id);
-      
         if (taskIndex !== -1) {
-          // ✅ Update the task with new data
           state.tasks[taskIndex] = { ...state.tasks[taskIndex], ...payload };
         }
       })
@@ -280,6 +292,18 @@ const tasksSlice = createSlice({
         state.isFetching = false;
         state.error = action.payload || { status: 500, message: 'Unknown error' };
       })
+      .addCase(createTaskThunk.pending, state => {
+        state.isFetching = true;
+        state.error = null;
+      })
+      .addCase(createTaskThunk.fulfilled, (state, { payload }) => {
+        state.isFetching = false;
+        state.tasks.push(payload);
+      })
+      .addCase(createTaskThunk.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
+        state.isFetching = false;
+        state.error = action.payload || { status: 500, message: 'Unknown error' };
+      });
   },
 });
 

@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from 'uuid';
+import { Formik, Form, Field } from 'formik';
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -12,18 +14,59 @@ import {
   Button,
   Checkbox,
   TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Select 
 } from '@mui/material';
 import { connect } from 'react-redux';
 import { Task, TaskStatus } from '../../types';
 import { statusColors } from '../../utils/colors';
-import { getTasksThunk, removeTaskThunk, updateTaskThunk } from '../../store/slices/taskSlice';
+import { getTasksThunk, removeTaskThunk, updateTaskThunk, createTaskThunk } from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
+import TASK_VALIDATION_SCHEMA from '../../utils/validationSchemas';
+import AddTaskForm from '../forms/AddTaskForm';
 
 
-const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId: number) => void; updateTask: (updatedTask: Task) => void; }> = ({ tasks, getTasks, removeTask, updateTask }) => {
+
+const List: React.FC<{
+  tasks: Task[];
+  getTasks: () => void;
+  removeTask: (taskId: number) => void;
+  updateTask: (updatedTask: Task) => void;
+  addTask: (task: Task) => void;
+}> = ({ tasks, getTasks, removeTask, updateTask, addTask }) => {
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+
+  const initialValues: Task = {
+    id: parseInt(uuidv4().replace(/[^0-9]/g, '').slice(0, 10), 10), // only for testing purposes
+    title: '',
+    dueDate: '',
+    status: [],
+    priority: '' as "High" | "Medium" | "Low",
+  }
+
+  // Handle open/close
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const handleSubmit = (values: Task, formikBag: any) => {
+    console.log('Submitting form...', values);
+    try {
+      addTask(values); 
+      //console.log('Task added:', values);
+    } catch (error) {
+      console.error('Error adding task:', error); 
+    }
+    formikBag.resetForm(); 
+    handleClose();
+  };
 
   // Fetch tasks from API when component mounts
   useEffect(() => {
@@ -39,12 +82,11 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
 
   // Remove selected tasks
   const handleDeleteSelected = () => {
-    selectedTasks.forEach(taskId => {
-      console.log(taskId)
+    selectedTasks.forEach((taskId) => {
+      console.log(taskId);
       removeTask(taskId);
     });
     setSelectedTasks([]);
-
   };
 
   const handleRowClick = (task: Task) => {
@@ -72,16 +114,36 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
   };
   return (
     <Box display="flex" flexDirection="column" alignItems="center" p={4} gap={2}>
-        <TextField
-            label="Search Tasks"
-            variant="standard"
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: '500px' }}
-            className={styles.searchTask}
-          />
-      {/* ✅ Only show delete button if tasks exist */}
+      <TextField
+        label="Search Tasks"
+        variant="standard"
+        size="small"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        sx={{ width: '500px' }}
+        className={styles.searchTask}
+      />
+      {/* Only show delete button if tasks exist */}
+      <>
+        {/* Add Task Button */}
+        <Button
+          variant="contained"
+          color="success"
+          onClick={handleOpen}
+          sx={{ alignSelf: 'flex-start', mb: 2 }}
+        >
+          Add New Task
+        </Button>
+
+        {/* Popup Window */}
+        <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+          <DialogTitle>Add New Task</DialogTitle>
+          <DialogContent>
+            <AddTaskForm initialValues={initialValues} onSubmit={handleSubmit} onClose={handleClose} />
+            
+          </DialogContent>
+        </Dialog>
+      </>
       {tasks.length > 0 && selectedTasks.length > 0 && (
         <Button
           variant="contained"
@@ -93,10 +155,9 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
         </Button>
       )}
 
-      {/* ✅ Hide table & details if no tasks */}
+      {/* Hide table & details if no tasks */}
       {tasks.length > 0 && (
         <Box display="flex" justifyContent="center" gap={3} alignItems="flex-start">
-          
           {/* TASK TABLE */}
           <TableContainer component={Paper} sx={{ maxWidth: 600, flex: 1 }}>
             <Table>
@@ -158,7 +219,7 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
             </Table>
           </TableContainer>
 
-          {/* ✅ HIDE TASK DETAILS IF NO TASK IS SELECTED */}
+          {/* HIDE TASK DETAILS IF NO TASK IS SELECTED */}
           {selectedTask && (
             <Box
               width="300px"
@@ -186,7 +247,9 @@ const List: React.FC<{ tasks: Task[]; getTasks: () => void; removeTask: (taskId:
                 {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
                   <Button
                     key={status}
-                    variant={selectedTask.status.includes(status as TaskStatus) ? 'contained' : 'outlined'}
+                    variant={
+                      selectedTask.status.includes(status as TaskStatus) ? 'contained' : 'outlined'
+                    }
                     sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
                     onClick={() => handleStatusToggle(status as TaskStatus)}
                   >
@@ -210,6 +273,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   getTasks: () => dispatch(getTasksThunk()),
   removeTask: (id: number) => dispatch(removeTaskThunk(id)),
   updateTask: (task: Task) => dispatch(updateTaskThunk(task)),
+  addTask: (task: Task) => dispatch(createTaskThunk(task)),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(List);

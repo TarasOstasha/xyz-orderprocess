@@ -21,6 +21,8 @@ export const getTasks = () => axiosInstance.get('/tasks');
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
 
-export const updateTask = (task: Task) => axiosInstance.put(`/tasks/${task.id}`, task);
+export const updateTask = ( task: Task) => axiosInstance.put(`/tasks/${task.id}`, task);
+
+export const createTask = (task: Task) => axiosInstance.post('/tasks', task);
 
 // export default axiosInstance;
