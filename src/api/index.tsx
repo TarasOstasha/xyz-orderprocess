@@ -17,7 +17,7 @@ interface Task {
   priority: string;
 }
 
-export const getTasks = (page: number, limit: number) => axiosInstance.get('/tasks?page=${page}&limit=${limit}');
+export const getTasks = (page: number, limit: number) => axiosInstance.get(`/tasks?page=${page}&limit=${limit}`);
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
 
