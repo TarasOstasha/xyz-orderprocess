@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Formik, Form, Field } from 'formik';
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -15,25 +14,29 @@ import {
   Checkbox,
   TextField,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
+  Select,
   MenuItem,
-  Select 
+  FormControl,
+  InputLabel,
+  Pagination,
 } from '@mui/material';
 import { connect } from 'react-redux';
 import { Task, TaskStatus } from '../../types';
 import { statusColors } from '../../utils/colors';
-import { getTasksThunk, removeTaskThunk, updateTaskThunk, createTaskThunk } from '../../store/slices/taskSlice';
+import {
+  getTasksThunk,
+  removeTaskThunk,
+  updateTaskThunk,
+  createTaskThunk,
+} from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
-import TASK_VALIDATION_SCHEMA from '../../utils/validationSchemas';
 import AddTaskForm from '../forms/AddTaskForm';
-
-
 
 const List: React.FC<{
   tasks: Task[];
-  getTasks: () => void;
+  getTasks: (page: number, limit: number) => void;
   removeTask: (taskId: number) => void;
   updateTask: (updatedTask: Task) => void;
   addTask: (task: Task) => void;
@@ -43,14 +46,25 @@ const List: React.FC<{
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1); // Current page number
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page is 5
+
+  // 1. Find indexes
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
   const initialValues: Task = {
-    id: parseInt(uuidv4().replace(/[^0-9]/g, '').slice(0, 10), 10), // only for testing purposes
+    id: parseInt(
+      uuidv4()
+        .replace(/[^0-9]/g, '')
+        .slice(0, 10),
+      10
+    ), // only for testing purposes
     title: '',
     dueDate: '',
     status: [],
-    priority: '' as "High" | "Medium" | "Low",
-  }
+    priority: '' as 'High' | 'Medium' | 'Low',
+  };
 
   // Handle open/close
   const handleOpen = () => setOpen(true);
@@ -59,19 +73,19 @@ const List: React.FC<{
   const handleSubmit = (values: Task, formikBag: any) => {
     console.log('Submitting form...', values);
     try {
-      addTask(values); 
+      addTask(values);
       //console.log('Task added:', values);
     } catch (error) {
-      console.error('Error adding task:', error); 
+      console.error('Error adding task:', error);
     }
-    formikBag.resetForm(); 
+    formikBag.resetForm();
     handleClose();
   };
 
   // Fetch tasks from API when component mounts
   useEffect(() => {
-    getTasks();
-  }, [getTasks]);
+    getTasks(currentPage, itemsPerPage);
+  }, [getTasks, currentPage, itemsPerPage]);
 
   // Handle checkbox change
   const handleCheckboxChange = (taskId: number) => {
@@ -99,33 +113,42 @@ const List: React.FC<{
 
   const handleStatusToggle = (status: TaskStatus) => {
     if (!selectedTask) return;
-
     const updatedStatus = selectedTask.status.includes(status)
       ? selectedTask.status.filter((s) => s !== status) // Remove status
       : [...selectedTask.status, status]; // Add status
-
     const updatedTask = { ...selectedTask, status: updatedStatus };
-
-    // Update local state
     setSelectedTask(updatedTask);
-
-    // Dispatch Redux action to update task in the store and database
     updateTask(updatedTask);
   };
+
+  // 2. Slice the tasks to only show the subset
+  const paginatedTasks = filteredTasks.slice(indexOfFirstItem, indexOfLastItem);
+  if (!tasks.length) {
+    return <Typography variant="h6">No tasks available</Typography>;
+  }
+
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" p={4} gap={2}>
-      <TextField
-        label="Search Tasks"
-        variant="standard"
-        size="small"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        sx={{ width: '500px' }}
-        className={styles.searchTask}
-      />
-      {/* Only show delete button if tasks exist */}
-      <>
-        {/* Add Task Button */}
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      p={4}
+      gap={2}
+      sx={{ backgroundColor: '#fff' }}
+    >
+      <Box display="flex" justifyContent="center" gap={3}>
+        <TextField
+          label="Search Tasks"
+          variant="standard"
+          size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          sx={{ width: '500px' }}
+          className={styles.searchTask}
+        />
+      </Box>
+
+      <Box display="flex" justifyContent="center" gap={3}>
         <Button
           variant="contained"
           color="success"
@@ -134,16 +157,20 @@ const List: React.FC<{
         >
           Add New Task
         </Button>
+      </Box>
 
-        {/* Popup Window */}
-        <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-          <DialogTitle>Add New Task</DialogTitle>
-          <DialogContent>
-            <AddTaskForm initialValues={initialValues} onSubmit={handleSubmit} onClose={handleClose} />
-            
-          </DialogContent>
-        </Dialog>
-      </>
+      {/* Popup Window */}
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+        <DialogTitle>Add New Task</DialogTitle>
+        <DialogContent>
+          <AddTaskForm
+            initialValues={initialValues}
+            onSubmit={handleSubmit}
+            onClose={handleClose}
+          />
+        </DialogContent>
+      </Dialog>
+
       {tasks.length > 0 && selectedTasks.length > 0 && (
         <Button
           variant="contained"
@@ -155,112 +182,153 @@ const List: React.FC<{
         </Button>
       )}
 
-      {/* Hide table & details if no tasks */}
-      {tasks.length > 0 && (
-        <Box display="flex" justifyContent="center" gap={3} alignItems="flex-start">
-          {/* TASK TABLE */}
-          <TableContainer component={Paper} sx={{ maxWidth: 600, flex: 1 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedTasks.length === tasks.length && tasks.length > 0}
-                      onChange={() =>
-                        setSelectedTasks(
-                          selectedTasks.length === tasks.length ? [] : tasks.map((task) => task.id)
-                        )
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Due Date</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    onClick={() => handleRowClick(task)}
-                    sx={{
-                      cursor: 'pointer',
-                      backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
-                    }}
-                  >
+      <Box display="flex" flexDirection="column" justifyContent="center" gap={3}>
+        {/* TASK TABLE */}
+        <Box display="flex" justifyContent="center" gap={3} sx={{ mt: 2 }}>
+          <Box>
+            <TableContainer component={Paper} sx={{ maxWidth: 600, flex: 1 }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
                     <TableCell>
                       <Checkbox
-                        checked={selectedTasks.includes(task.id)}
-                        onChange={() => handleCheckboxChange(task.id)}
+                        checked={selectedTasks.length === tasks.length && tasks.length > 0}
+                        onChange={() =>
+                          setSelectedTasks(
+                            selectedTasks.length === tasks.length
+                              ? []
+                              : tasks.map((task) => task.id)
+                          )
+                        }
                       />
                     </TableCell>
-                    <TableCell>{task.title}</TableCell>
-                    <TableCell>{task.dueDate}</TableCell>
-                    <TableCell>
-                      <Box display="flex" gap={1}>
-                        {task.status.map((status) => (
-                          <Box key={status} display="flex" alignItems="center" gap={1}>
-                            <Box
-                              sx={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: '3px',
-                                backgroundColor: statusColors[status],
-                              }}
-                            />
-                            <Typography variant="body2">{status}</Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Due Date</TableCell>
+                    <TableCell>Status</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {paginatedTasks.map((task) => (
+                    <TableRow
+                      key={task.id}
+                      onClick={() => handleRowClick(task)}
+                      sx={{
+                        cursor: 'pointer',
+                        backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
+                      }}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTasks.includes(task.id)}
+                          onChange={() => handleCheckboxChange(task.id)}
+                        />
+                      </TableCell>
+                      <TableCell>{task.title}</TableCell>
+                      <TableCell>{task.dueDate}</TableCell>
+                      <TableCell>
+                        <Box display="flex" gap={1}>
+                          {task.status.map((status) => (
+                            <Box key={status} display="flex" alignItems="center" gap={1}>
+                              <Box
+                                sx={{
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: '3px',
+                                  backgroundColor: statusColors[status],
+                                }}
+                              />
+                              <Typography variant="body2">{status}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
 
-          {/* HIDE TASK DETAILS IF NO TASK IS SELECTED */}
-          {selectedTask && (
-            <Box
-              width="300px"
-              minHeight="200px"
-              p={2}
-              component={Paper}
-              sx={{
-                flexShrink: 0,
-                boxShadow: 3,
-                borderRadius: 2,
-                border: '1px solid #ddd',
-              }}
-            >
-              <Typography variant="h6">{selectedTask.title}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Due Date: {selectedTask.dueDate}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Priority: {selectedTask.priority}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Status:
-              </Typography>
-              <Box display="flex" gap={1} mt={1}>
-                {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
-                  <Button
-                    key={status}
-                    variant={
-                      selectedTask.status.includes(status as TaskStatus) ? 'contained' : 'outlined'
-                    }
-                    sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
-                    onClick={() => handleStatusToggle(status as TaskStatus)}
-                  >
-                    {status}
-                  </Button>
-                ))}
+          <Box >
+            {selectedTask && (
+              <Box
+                width="300px"
+                minHeight="200px"
+                p={2}
+                component={Paper}
+                sx={{
+                  flexShrink: 0,
+                  boxShadow: 3,
+                  borderRadius: 2,
+                  border: '1px solid #ddd',
+                }}
+              >
+                <Typography variant="h6">{selectedTask.title}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Due Date: {selectedTask.dueDate}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Priority: {selectedTask.priority}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Status:
+                </Typography>
+                <Box display="flex" gap={1} mt={1}>
+                  {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
+                    <Button
+                      key={status}
+                      variant={
+                        selectedTask.status.includes(status as TaskStatus)
+                          ? 'contained'
+                          : 'outlined'
+                      }
+                      sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
+                      onClick={() => handleStatusToggle(status as TaskStatus)}
+                    >
+                      {status}
+                    </Button>
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          )}
+            )}
+          </Box>
         </Box>
-      )}
+
+        {/* Pagination Controls */}
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ width: '600px', mb: 2 }}
+        >
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Items Per Page</InputLabel>
+            <Select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              label="Items Per Page"
+            >
+              {[5, 25, 100].map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Pagination
+            count={Math.ceil(filteredTasks.length / itemsPerPage)}
+            page={currentPage}
+            onChange={(event, value) => setCurrentPage(value)}
+            color="primary"
+          />
+        </Box>
+
+        {/* Hide task details if no task is selected */}
+      </Box>
     </Box>
   );
 };
@@ -270,7 +338,7 @@ const mapStateToProps = ({ tasks: { tasks } }: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  getTasks: () => dispatch(getTasksThunk()),
+  getTasks: (page: number, limit: number) => dispatch(getTasksThunk({ page, limit })),
   removeTask: (id: number) => dispatch(removeTaskThunk(id)),
   updateTask: (task: Task) => dispatch(updateTaskThunk(task)),
   addTask: (task: Task) => dispatch(createTaskThunk(task)),

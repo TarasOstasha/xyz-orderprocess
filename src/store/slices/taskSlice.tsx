@@ -19,6 +19,9 @@ interface TaskError {
 
 interface TasksState {
   tasks: Task[];
+  currentPage: number;
+  totalPages: number;
+  limit: number;
   isFetching: boolean;
   error: TaskError | null;
 }
@@ -143,6 +146,9 @@ const TASKS_SLICE_NAME = 'tasks';
 
 const initialState: TasksState = {
   tasks: initialTasks,
+  currentPage: 1,
+  totalPages: 1,
+  limit: 25,
   isFetching: false,
   error: null,
 };
@@ -175,15 +181,17 @@ export const createTaskThunk = createAsyncThunk<Task, Task, { rejectValue: TaskE
 
 
 // tasks/get
-export const getTasksThunk = createAsyncThunk<Task[], void, { rejectValue: TaskError }>(
+export const getTasksThunk = createAsyncThunk<
+  { tasks: Task[]; totalPages: number; currentPage: number }, // Success payload type
+  { page: number; limit: number },  // Input parameters
+  { rejectValue: TaskError }  // Error handling
+>(
   `${TASKS_SLICE_NAME}/get`,
-  async (payload, thunkAPI) => {
+  async ({ page, limit }, thunkAPI) => {
     try {
-      const {
-        data: { data },
-      } = await API.getTasks();
-      return data; // => payload
-    } catch (err: unknown) {
+      const response = await API.getTasks(page, limit);
+      return response.data;  // Should return { tasks, totalPages, currentPage }
+    } catch (err: any) {
       if (err instanceof AxiosError) {
         return thunkAPI.rejectWithValue({
           status: err.response?.status || 500,
@@ -197,6 +205,7 @@ export const getTasksThunk = createAsyncThunk<Task[], void, { rejectValue: TaskE
     }
   }
 );
+
 
 // remove task
 export const removeTaskThunk = createAsyncThunk<
@@ -254,9 +263,11 @@ const tasksSlice = createSlice({
         state.isFetching = true;
         state.error = null;
       })
-      .addCase(getTasksThunk.fulfilled, (state, action: PayloadAction<Task[]>) => {
+      .addCase(getTasksThunk.fulfilled, (state, { payload }) => {
         state.isFetching = false;
-        state.tasks = action.payload;
+        state.tasks = payload.tasks;
+        state.totalPages = payload.totalPages;
+        state.currentPage = payload.currentPage;
       })
       .addCase(getTasksThunk.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
         state.isFetching = false;
