@@ -46,6 +46,9 @@ const List: React.FC<{
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
 
+  const [pastedData, setPastedData] = useState<{ [key: number]: string }>({});
+  const [pastedImages, setPastedImages] = useState<{ [key: number]: string[] }>({});  
+
   const [currentPage, setCurrentPage] = useState(1); // Current page number
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page is 5
 
@@ -81,6 +84,50 @@ const List: React.FC<{
     formikBag.resetForm();
     handleClose();
   };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const clipboardData = e.clipboardData;
+  
+    if (!selectedTask) return; // Ensure a task is selected
+  
+    // Check for image data
+    const items = clipboardData.items;
+    for (const item of items) {
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setPastedImages((prev) => ({
+              ...prev,
+              [selectedTask.id]: [...(prev[selectedTask.id] || []), event.target?.result as string],
+            }));
+          };
+          reader.readAsDataURL(file);
+        }
+        return;
+      }
+    }
+  
+    // Check for HTML content (tables, formatted text)
+    const htmlData = clipboardData.getData('text/html');
+    if (htmlData) {
+      setPastedData((prev) => ({
+        ...prev,
+        [selectedTask.id]: htmlData,
+      }));
+      return;
+    }
+  
+    // Default to plain text
+    const textData = clipboardData.getData('text');
+    setPastedData((prev) => ({
+      ...prev,
+      [selectedTask.id]: textData,
+    }));
+  };
+  
 
   // Fetch tasks from API when component mounts
   useEffect(() => {
@@ -249,47 +296,82 @@ const List: React.FC<{
             </TableContainer>
           </Box>
 
-          <Box >
+          <Box>
             {selectedTask && (
-              <Box
-                width="300px"
-                minHeight="200px"
-                p={2}
-                component={Paper}
-                sx={{
-                  flexShrink: 0,
-                  boxShadow: 3,
-                  borderRadius: 2,
-                  border: '1px solid #ddd',
-                }}
-              >
-                <Typography variant="h6">{selectedTask.title}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Due Date: {selectedTask.dueDate}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Priority: {selectedTask.priority}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Status:
-                </Typography>
-                <Box display="flex" gap={1} mt={1}>
-                  {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
-                    <Button
-                      key={status}
-                      variant={
-                        selectedTask.status.includes(status as TaskStatus)
-                          ? 'contained'
-                          : 'outlined'
-                      }
-                      sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
-                      onClick={() => handleStatusToggle(status as TaskStatus)}
-                    >
-                      {status}
-                    </Button>
-                  ))}
+              <>
+                <Box
+                  width="600px"
+                  minHeight="200px"
+                  p={2}
+                  component={Paper}
+                  sx={{
+                    flexShrink: 0,
+                    boxShadow: 3,
+                    borderRadius: 2,
+                    border: '1px solid #ddd',
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Typography variant="h6">{selectedTask.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Due Date: {selectedTask.dueDate}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Priority: {selectedTask.priority}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Status:
+                  </Typography>
+                  <Box display="flex" gap={1} mt={1}>
+                    {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((status) => (
+                      <Button
+                        key={status}
+                        variant={
+                          selectedTask.status.includes(status as TaskStatus)
+                            ? 'contained'
+                            : 'outlined'
+                        }
+                        sx={{ backgroundColor: statusColors[status as TaskStatus], color: '#fff' }}
+                        onClick={() => handleStatusToggle(status as TaskStatus)}
+                      >
+                        {status}
+                      </Button>
+                    ))}
+                  </Box>
                 </Box>
-              </Box>
+
+                {/* PASTE FUNCTIONALITY BOX */}
+                <Box>
+    <Typography variant="h6">Paste Task Data</Typography>
+    <TextField
+      label="Paste Here"
+      fullWidth
+      multiline
+      rows={4}
+      margin="dense"
+      variant="outlined"
+      onPaste={handlePaste}
+    />
+
+    {/* Display Pasted Content (Text/HTML) */}
+    {pastedData[selectedTask.id] && (
+      <Box mt={2} p={2} sx={{ backgroundColor: '#f9f9f9', borderRadius: 1, border: '1px solid #ddd', maxHeight: '1000px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+        <Typography variant="body1" dangerouslySetInnerHTML={{ __html: pastedData[selectedTask.id] }} />
+      </Box>
+    )}
+
+    {/* Display Pasted Images */}
+    {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
+      <Box mt={2} display="flex" flexDirection="column" gap={2}>
+        {pastedImages[selectedTask.id].map((image, index) => (
+          <Box key={index} sx={{ maxWidth: '100%', maxHeight: '1000px', overflowY: 'auto', border: '1px solid #ddd' }}>
+            <img src={image} alt="Pasted" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          </Box>
+        ))}
+      </Box>
+    )}
+  </Box>
+              </>
             )}
           </Box>
         </Box>
