@@ -47,7 +47,7 @@ const List: React.FC<{
   const [open, setOpen] = useState(false);
 
   const [pastedData, setPastedData] = useState<{ [key: number]: string }>({});
-  const [pastedImages, setPastedImages] = useState<{ [key: number]: string[] }>({});  
+  const [pastedImages, setPastedImages] = useState<{ [key: number]: string[] }>({});
 
   const [currentPage, setCurrentPage] = useState(1); // Current page number
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page is 5
@@ -88,9 +88,9 @@ const List: React.FC<{
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const clipboardData = e.clipboardData;
-  
+
     if (!selectedTask) return; // Ensure a task is selected
-  
+
     // Check for image data
     const items = clipboardData.items;
     for (const item of items) {
@@ -109,7 +109,7 @@ const List: React.FC<{
         return;
       }
     }
-  
+
     // Check for HTML content (tables, formatted text)
     const htmlData = clipboardData.getData('text/html');
     if (htmlData) {
@@ -119,7 +119,7 @@ const List: React.FC<{
       }));
       return;
     }
-  
+
     // Default to plain text
     const textData = clipboardData.getData('text');
     setPastedData((prev) => ({
@@ -127,7 +127,6 @@ const List: React.FC<{
       [selectedTask.id]: textData,
     }));
   };
-  
 
   // Fetch tasks from API when component mounts
   useEffect(() => {
@@ -148,6 +147,25 @@ const List: React.FC<{
       removeTask(taskId);
     });
     setSelectedTasks([]);
+  };
+
+  const handleSuccessSelected = () => {
+    selectedTasks.forEach((taskId) => {
+      const task = tasks.find((task) => task.id === taskId);
+      if (task) {
+        const updatedStatus = task.status.includes('Completed')
+          ? task.status
+          : [...task.status, 'Completed'];
+
+        const updatedTask: Task = {
+          ...task,
+          status: updatedStatus as TaskStatus[],
+        };
+
+        updateTask(updatedTask);
+        setSelectedTask(updatedTask);
+      }
+    });
   };
 
   const handleRowClick = (task: Task) => {
@@ -219,14 +237,25 @@ const List: React.FC<{
       </Dialog>
 
       {tasks.length > 0 && selectedTasks.length > 0 && (
-        <Button
-          variant="contained"
-          color="error"
-          onClick={handleDeleteSelected}
-          sx={{ alignSelf: 'flex-start', mb: 2 }}
-        >
-          Delete Selected ({selectedTasks.length})
-        </Button>
+        <Box display="flex" justifyContent="center" gap={3}>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteSelected}
+            sx={{ alignSelf: 'flex-start', mb: 2 }}
+          >
+            Delete Selected ({selectedTasks.length})
+          </Button>
+
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSuccessSelected}
+            sx={{ alignSelf: 'flex-start', mb: 2 }}
+          >
+            Success Selected ({selectedTasks.length})
+          </Button>
+        </Box>
       )}
 
       <Box display="flex" flexDirection="column" justifyContent="center" gap={3}>
@@ -262,6 +291,7 @@ const List: React.FC<{
                       sx={{
                         cursor: 'pointer',
                         backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
+                        textDecoration: task.status.includes('Completed') ? 'line-through' : 'none',
                       }}
                     >
                       <TableCell>
@@ -342,35 +372,61 @@ const List: React.FC<{
 
                 {/* PASTE FUNCTIONALITY BOX */}
                 <Box>
-    <Typography variant="h6">Paste Task Data</Typography>
-    <TextField
-      label="Paste Here"
-      fullWidth
-      multiline
-      rows={4}
-      margin="dense"
-      variant="outlined"
-      onPaste={handlePaste}
-    />
+                  <Typography variant="h6">Paste Task Data</Typography>
+                  <TextField
+                    label="Paste Here"
+                    fullWidth
+                    multiline
+                    rows={4}
+                    margin="dense"
+                    variant="outlined"
+                    onPaste={handlePaste}
+                  />
 
-    {/* Display Pasted Content (Text/HTML) */}
-    {pastedData[selectedTask.id] && (
-      <Box mt={2} p={2} sx={{ backgroundColor: '#f9f9f9', borderRadius: 1, border: '1px solid #ddd', maxHeight: '1000px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-        <Typography variant="body1" dangerouslySetInnerHTML={{ __html: pastedData[selectedTask.id] }} />
-      </Box>
-    )}
+                  {/* Display Pasted Content (Text/HTML) */}
+                  {pastedData[selectedTask.id] && (
+                    <Box
+                      mt={2}
+                      p={2}
+                      sx={{
+                        backgroundColor: '#f9f9f9',
+                        borderRadius: 1,
+                        border: '1px solid #ddd',
+                        maxHeight: '1000px',
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        dangerouslySetInnerHTML={{ __html: pastedData[selectedTask.id] }}
+                      />
+                    </Box>
+                  )}
 
-    {/* Display Pasted Images */}
-    {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
-      <Box mt={2} display="flex" flexDirection="column" gap={2}>
-        {pastedImages[selectedTask.id].map((image, index) => (
-          <Box key={index} sx={{ maxWidth: '100%', maxHeight: '1000px', overflowY: 'auto', border: '1px solid #ddd' }}>
-            <img src={image} alt="Pasted" style={{ width: '100%', height: 'auto', display: 'block' }} />
-          </Box>
-        ))}
-      </Box>
-    )}
-  </Box>
+                  {/* Display Pasted Images */}
+                  {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
+                    <Box mt={2} display="flex" flexDirection="column" gap={2}>
+                      {pastedImages[selectedTask.id].map((image, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            maxWidth: '100%',
+                            maxHeight: '1000px',
+                            overflowY: 'auto',
+                            border: '1px solid #ddd',
+                          }}
+                        >
+                          <img
+                            src={image}
+                            alt="Pasted"
+                            style={{ width: '100%', height: 'auto', display: 'block' }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
               </>
             )}
           </Box>
