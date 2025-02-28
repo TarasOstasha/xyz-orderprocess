@@ -34,7 +34,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ initialValues, onSubmit, onCl
     >
       {({ errors, touched, values }) => (
         <Form>
-          {/* Title Field */}
+          {/* Title/Subject Field */}
           <Field
             as={TextField}
             label="Title"
@@ -44,7 +44,78 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ initialValues, onSubmit, onCl
             error={touched.title && Boolean(errors.title)}
             helperText={touched.title ? errors.title : ''}
           />
-
+          {/* Ship */}
+          <Field
+            as={TextField}
+            label="Ship"
+            name="ship"
+            fullWidth
+            margin="dense"
+            error={touched.ship && Boolean(errors.ship)}
+            helperText={touched.ship ? errors.ship : ''}
+          />
+          {/* Art */}
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Field name="art">
+              {({ field, form }: any) => (
+                <DatePicker
+                  label="Art"
+                  value={field.value ? dayjs(field.value) : null}
+                  onChange={(date) =>
+                    form.setFieldValue(field.name, date ? dayjs(date).format('YYYY-MM-DD') : '')
+                  }
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      margin: 'dense',
+                      error: Boolean(form.errors.art && form.touched.art),
+                      helperText: form.touched.art ? form.errors.art : '',
+                    },
+                  }}
+                />
+              )}
+            </Field>
+          </LocalizationProvider>
+          {/* In Hand */}
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Field name="inHand">
+              {({ field, form }: any) => (
+                <DatePicker
+                  label="In Hand"
+                  value={field.value ? dayjs(field.value) : null}
+                  onChange={(date) =>
+                    form.setFieldValue(field.name, date ? dayjs(date).format('YYYY-MM-DD') : '')
+                  }
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      margin: 'dense',
+                      error: Boolean(form.errors.inHand && form.touched.inHand),
+                      helperText: form.touched.inHand ? form.errors.inHand : '',
+                    },
+                  }}
+                />
+              )}
+            </Field>
+            {/* Status Multi-Select - Wrap with FormControl | Categories */}
+            <FormControl fullWidth margin="dense" error={touched.status && Boolean(errors.status)}>
+              <InputLabel>Status</InputLabel>
+              <Field
+                as={Select}
+                multiple
+                name="status"
+                renderValue={(selected: TaskStatus[]) => selected.join(', ')}
+              >
+                {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((option) => (
+                  <MenuItem key={option} value={option as TaskStatus}>
+                    <Checkbox checked={values.status.includes(option as TaskStatus)} />
+                    {option}
+                  </MenuItem>
+                ))}
+              </Field>
+              {touched.status && errors.status && <FormHelperText>{errors.status}</FormHelperText>}
+            </FormControl>
+          </LocalizationProvider>
           {/* Due Date Field */}
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Field name="dueDate">
@@ -85,25 +156,6 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ initialValues, onSubmit, onCl
               </MenuItem>
             ))}
           </Field>
-
-          {/* Status Multi-Select - Wrap with FormControl */}
-          <FormControl fullWidth margin="dense" error={touched.status && Boolean(errors.status)}>
-            <InputLabel>Status</InputLabel>
-            <Field
-              as={Select}
-              multiple
-              name="status"
-              renderValue={(selected: TaskStatus[]) => selected.join(', ')}
-            >
-              {['Pending', 'In Progress', 'Completed', 'On Hold', 'Review'].map((option) => (
-                <MenuItem key={option} value={option as TaskStatus}>
-                  <Checkbox checked={values.status.includes(option as TaskStatus)} />
-                  {option}
-                </MenuItem>
-              ))}
-            </Field>
-            {touched.status && errors.status && <FormHelperText>{errors.status}</FormHelperText>}
-          </FormControl>
 
           {/* Buttons */}
           <DialogActions>

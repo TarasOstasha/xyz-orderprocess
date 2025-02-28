@@ -6,6 +6,9 @@ import * as API from './../../api';
 interface Task {
   id: number;
   title: string;
+  ship: string;
+  art: string;
+  inHand: string;
   dueDate: string;
   status: string[];
   priority: string;
@@ -31,6 +34,9 @@ const initialTasks: Task[] = [
   {
     id: 1,
     title: 'Finish report',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-21',
     status: ['Pending', 'Review'],
     priority: 'High',
@@ -38,6 +44,9 @@ const initialTasks: Task[] = [
   {
     id: 2,
     title: 'Call client',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-22',
     status: ['In Progress'],
     priority: 'Medium',
@@ -45,6 +54,9 @@ const initialTasks: Task[] = [
   {
     id: 3,
     title: 'Prepare slides',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -52,6 +64,9 @@ const initialTasks: Task[] = [
   {
     id: 4,
     title: 'Prepare slides2',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -59,6 +74,9 @@ const initialTasks: Task[] = [
   {
     id: 5,
     title: 'Finish report',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-21',
     status: ['Pending', 'Review'],
     priority: 'High',
@@ -66,6 +84,9 @@ const initialTasks: Task[] = [
   {
     id: 6,
     title: 'Call client',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-22',
     status: ['In Progress'],
     priority: 'Medium',
@@ -73,6 +94,9 @@ const initialTasks: Task[] = [
   {
     id: 7,
     title: 'Prepare slides',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -80,6 +104,9 @@ const initialTasks: Task[] = [
   {
     id: 8,
     title: 'Prepare slides2',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -87,6 +114,9 @@ const initialTasks: Task[] = [
   {
     id: 9,
     title: 'Finish report',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-21',
     status: ['Pending', 'Review'],
     priority: 'High',
@@ -94,6 +124,9 @@ const initialTasks: Task[] = [
   {
     id: 10,
     title: 'Call client',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-22',
     status: ['In Progress'],
     priority: 'Medium',
@@ -101,6 +134,9 @@ const initialTasks: Task[] = [
   {
     id: 11,
     title: 'Prepare slides',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -108,6 +144,9 @@ const initialTasks: Task[] = [
   {
     id: 12,
     title: 'Prepare slides2',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -115,6 +154,9 @@ const initialTasks: Task[] = [
   {
     id: 13,
     title: 'Finish report',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-21',
     status: ['Pending', 'Review'],
     priority: 'High',
@@ -122,6 +164,9 @@ const initialTasks: Task[] = [
   {
     id: 14,
     title: 'Call client',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-22',
     status: ['In Progress'],
     priority: 'Medium',
@@ -129,6 +174,9 @@ const initialTasks: Task[] = [
   {
     id: 15,
     title: 'Prepare slides',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',
@@ -136,6 +184,9 @@ const initialTasks: Task[] = [
   {
     id: 16,
     title: 'Prepare slides2',
+    ship: 'Ship1 // AD',
+    art: '2024-02-22',
+    inHand: '2024-02-21',
     dueDate: '2024-02-23',
     status: ['Completed', 'On Hold'],
     priority: 'Low',

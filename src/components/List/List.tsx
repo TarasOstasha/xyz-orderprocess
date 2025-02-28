@@ -33,6 +33,29 @@ import {
 } from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
 import AddTaskForm from '../forms/AddTaskForm';
+import OrderNotesTable, { StepsByTask, StepRow } from '../tables/OrderNotesTable';
+import OrderStepsTable from '../tables/OrderNotesTable';
+
+const defaultRows: StepRow[] = [
+  { id: 1, step: 'PAYMENT PROCESSED', date: '2/14', by: 'O', notes: '' },
+  { id: 2, step: 'Order Placed', date: '2/13', by: 'VM', notes: '' },
+  { id: 3, step: 'Order Checked', date: '2/13', by: 'YS', notes: '' },
+  { id: 4, step: 'Vendor Confirmation Checked', date: '2/13', by: 'YK', notes: '' },
+  { id: 5, step: 'Graphics Sent to Vendor', date: '2/13', by: 'LG', notes: '' },
+  { id: 6, step: 'Vendor Proof Sent to Client', date: '2/13', by: 'GL', notes: '' },
+  { id: 7, step: 'Client Approval Sent to Vendor', date: '2/14', by: '??', notes: '' },
+  { id: 8, step: 'Order Shipped', date: '2/17', by: 'AD', notes: '' },
+  { id: 9, step: 'Pictures Sent to Client', date: '2/18', by: '??', notes: '' },
+];
+
+function createInitialData(taskIds: string[]): StepsByTask {
+  const result: StepsByTask = {};
+  for (const tid of taskIds) {
+    // Clone default rows so each task has its own data
+    result[tid] = defaultRows.map((row) => ({ ...row }));
+  }
+  return result;
+}
 
 const List: React.FC<{
   tasks: Task[];
@@ -51,6 +74,7 @@ const List: React.FC<{
 
   const [currentPage, setCurrentPage] = useState(1); // Current page number
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page is 5
+  const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(['1', '2', '3']));
 
   // 1. Find indexes
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -64,6 +88,9 @@ const List: React.FC<{
       10
     ), // only for testing purposes
     title: '',
+    ship: '',
+    art: '',
+    inHand: '',
     dueDate: '',
     status: [],
     priority: '' as 'High' | 'Medium' | 'Low',
@@ -262,7 +289,7 @@ const List: React.FC<{
         {/* TASK TABLE */}
         <Box display="flex" justifyContent="center" gap={3} sx={{ mt: 2 }}>
           <Box>
-            <TableContainer component={Paper} sx={{ maxWidth: 600, flex: 1 }}>
+            <TableContainer component={Paper} sx={{ maxWidth: 900, flex: 1 }}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -278,9 +305,12 @@ const List: React.FC<{
                         }
                       />
                     </TableCell>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Due Date</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Title</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Art</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>In Hand</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Ship</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Due Date</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -301,6 +331,9 @@ const List: React.FC<{
                         />
                       </TableCell>
                       <TableCell>{task.title}</TableCell>
+                      <TableCell>{task.ship}</TableCell>
+                      <TableCell>{task.art}</TableCell>
+                      <TableCell>{task.inHand}</TableCell>
                       <TableCell>{task.dueDate}</TableCell>
                       <TableCell>
                         <Box display="flex" gap={1}>
@@ -326,9 +359,11 @@ const List: React.FC<{
             </TableContainer>
           </Box>
 
+          {/* Right Popup Section */}
           <Box>
             {selectedTask && (
               <>
+                {/* Top info section */}
                 <Box
                   width="600px"
                   minHeight="200px"
@@ -369,6 +404,13 @@ const List: React.FC<{
                     ))}
                   </Box>
                 </Box>
+
+                {/* Order Notes Table */}
+                <OrderStepsTable
+                  taskId={selectedTask.id.toString()}
+                  stepsByTask={stepsByTask}
+                  setStepsByTask={setStepsByTask}
+                />
 
                 {/* PASTE FUNCTIONALITY BOX */}
                 <Box>
