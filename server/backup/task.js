@@ -76,7 +76,7 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     status: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: Sequelize.ARRAY(DataTypes.STRING),
       allowNull: false
     },
     priority: {

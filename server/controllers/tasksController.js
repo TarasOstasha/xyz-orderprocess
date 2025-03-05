@@ -166,22 +166,27 @@ const initialTasks = [
     },
   ];
 
-module.exports.getTasks = async (req, res, next) => {
+exports.getTasks = async (req, res, next) => {
   try {
-    // const foundTasks = await Task.findAll({
-    //   raw: true,
-    //   attributes: { exclude: ['createdAt', 'updatedAt'] },
-    //   include: {
-    //     model: User,
-    //     attributes: ['firstName', 'lastName'],
-    //   },
-    // });
-    const foundTasks = await Task.findAll({
-        raw: true,
-        attributes: { exclude: ['createdAt', 'updatedAt'] },
-      });
-      console.log(foundTasks, 'foundTasks');
-    res.status(200).send({ tasks: initialTasks });
+    const { limit, offset } = req.pagination;
+    
+    const { rows: foundTasks, count } = await Task.findAndCountAll({
+      raw: true,
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      limit,
+      offset,
+      order: ['id']
+    });
+
+    const totalPages = Math.ceil(count / limit);
+    const currentPage = offset / limit + 1;
+
+    return res.status(200).json({
+      tasks: foundTasks,
+      totalPages,
+      currentPage,
+      totalItems: count
+    });
   } catch (err) {
     next(err);
   }
