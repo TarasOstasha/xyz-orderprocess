@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import { AxiosError } from 'axios';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import * as API from './../../api';
@@ -30,176 +31,176 @@ interface TasksState {
 }
 
 // test data
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: 'Order 100',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-21',
-    status: ['Paid', 'Order from Vendor Confirmed'],
-    priority: 'High',
-  },
-  {
-    id: 2,
-    title: 'Order 101',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-22',
-    status: ['In Progress'],
-    priority: 'Medium',
-  },
-  {
-    id: 3,
-    title: 'Order 101',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 4,
-    title: 'Order 102',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 5,
-    title: 'Order 103',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-21',
-    status: ['Paid', 'Order from Vendor Confirmed'],
-    priority: 'High',
-  },
-  {
-    id: 6,
-    title: 'Order 104',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-22',
-    status: ['In Progress'],
-    priority: 'Medium',
-  },
-  {
-    id: 7,
-    title: 'Order 105',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 8,
-    title: 'Order 106',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 9,
-    title: 'Order 107',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-21',
-    status: ['Paid', 'Order from Vendor Confirmed'],
-    priority: 'High',
-  },
-  {
-    id: 10,
-    title: 'Order 108',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-22',
-    status: ['In Progress'],
-    priority: 'Medium',
-  },
-  {
-    id: 11,
-    title: 'Order 109',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 12,
-    title: 'Order 110',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 13,
-    title: 'Order 111',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-21',
-    status: ['Paid', 'Order from Vendor Confirmed'],
-    priority: 'High',
-  },
-  {
-    id: 14,
-    title: 'Order 112',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-22',
-    status: ['In Progress'],
-    priority: 'Medium',
-  },
-  {
-    id: 15,
-    title: 'Order 113',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-  {
-    id: 16,
-    title: 'Order 114',
-    ship: 'Ship1 // AD',
-    art: '2024-02-22',
-    inHand: '2024-02-21',
-    dueDate: '2024-02-23',
-    status: ['Completed', 'On Hold'],
-    priority: 'Low',
-  },
-];
+// const initialTasks: Task[] = [
+//   {
+//     id: 1,
+//     title: 'Order 100',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-21',
+//     status: ['Paid', 'Order from Vendor Confirmed'],
+//     priority: 'High',
+//   },
+//   {
+//     id: 2,
+//     title: 'Order 101',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-22',
+//     status: ['In Progress'],
+//     priority: 'Medium',
+//   },
+//   {
+//     id: 3,
+//     title: 'Order 101',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 4,
+//     title: 'Order 102',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 5,
+//     title: 'Order 103',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-21',
+//     status: ['Paid', 'Order from Vendor Confirmed'],
+//     priority: 'High',
+//   },
+//   {
+//     id: 6,
+//     title: 'Order 104',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-22',
+//     status: ['In Progress'],
+//     priority: 'Medium',
+//   },
+//   {
+//     id: 7,
+//     title: 'Order 105',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 8,
+//     title: 'Order 106',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 9,
+//     title: 'Order 107',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-21',
+//     status: ['Paid', 'Order from Vendor Confirmed'],
+//     priority: 'High',
+//   },
+//   {
+//     id: 10,
+//     title: 'Order 108',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-22',
+//     status: ['In Progress'],
+//     priority: 'Medium',
+//   },
+//   {
+//     id: 11,
+//     title: 'Order 109',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 12,
+//     title: 'Order 110',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 13,
+//     title: 'Order 111',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-21',
+//     status: ['Paid', 'Order from Vendor Confirmed'],
+//     priority: 'High',
+//   },
+//   {
+//     id: 14,
+//     title: 'Order 112',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-22',
+//     status: ['In Progress'],
+//     priority: 'Medium',
+//   },
+//   {
+//     id: 15,
+//     title: 'Order 113',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+//   {
+//     id: 16,
+//     title: 'Order 114',
+//     ship: 'Ship1 // AD',
+//     art: '2024-02-22',
+//     inHand: '2024-02-21',
+//     dueDate: '2024-02-23',
+//     status: ['Completed', 'On Hold'],
+//     priority: 'Low',
+//   },
+// ];
 
 const TASKS_SLICE_NAME = 'tasks';
 
 const initialState: TasksState = {
-  tasks: initialTasks,
+  tasks: [],
   currentPage: 1,
   totalPages: 1,
-  limit: 25,
+  limit: 5,
   isFetching: false,
   error: null,
 };
@@ -210,10 +211,10 @@ const initialState: TasksState = {
 export const createTaskThunk = createAsyncThunk<Task, Task, { rejectValue: TaskError }>(
   `${TASKS_SLICE_NAME}/create`,
   async (newTask, thunkAPI) => {
-    console.log(newTask, 'newTask')
+    const taskWithoutId: any = _.omit(newTask, 'id');
     try {
-      //const response = await API.createTask(newTask); // Ensure your API supports this
-      //return response.data; // Assuming your API returns the created task
+      const response = await API.createTask(taskWithoutId); 
+      return response.data; // Assuming your API returns the created task
       return newTask
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
@@ -267,7 +268,7 @@ export const removeTaskThunk = createAsyncThunk<
   'tasks/remove',
   async (taskId, thunkAPI) => {
     try {
-      //await API.removeTaskById(taskId); 
+      await API.removeTaskById(taskId); 
       return taskId;
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
@@ -307,7 +308,17 @@ export const updateTaskThunk = createAsyncThunk<
 const tasksSlice = createSlice({
   name: TASKS_SLICE_NAME,
   initialState,
-  reducers: {},
+  reducers: {
+     setCurrentPage: (state, action: PayloadAction<number>) => {
+      console.log(action.payload, 'setCurrentPage')
+      state.currentPage = action.payload;
+    },
+    setItemsPerPage: (state, action: PayloadAction<number>) => {
+      console.log(action.payload, 'setItemsPerPage')
+      state.limit = action.payload;
+      state.currentPage = 1;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(getTasksThunk.pending, (state) => {
@@ -370,6 +381,8 @@ const tasksSlice = createSlice({
 });
 
 
-const { reducer } = tasksSlice;
+const { reducer, actions } = tasksSlice;
+
+export const { setCurrentPage, setItemsPerPage } = actions;
 
 export default reducer;

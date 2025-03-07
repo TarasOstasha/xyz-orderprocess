@@ -1,1 +1,33 @@
 GET http://localhost:5000/api/tasks
+
+### 201 {task}
+POST http://localhost:5000/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Order 200",
+  "ship": "Ship2 // BD",
+  "art": "2025-11-01T20:00:00-04:00",
+  "in_hand": "2025-11-02T20:00:00-04:00",
+  "due_date": "2025-11-03T20:00:00-04:00",
+  "status": ["Paid", "Order from Vendor Confirmed"],
+  "priority": "High"
+}
+
+
+### 500 model valid error double check the date format
+POST http://localhost:5000/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Order 201",
+  "ship": "Ship2 // BD",
+  "art": "2025-11-01T20:00:00-04:00",
+  "in_hand": "2024-11-02T20:00:00-04:00",
+  "due_date": "2025-11-03T20:00:00-04:00",
+  "status": ["Paid", "Order from Vendor Confirmed"],
+  "priority": "test"
+}
+
+### 204 {}
+DELETE http://localhost:5000/api/tasks/17

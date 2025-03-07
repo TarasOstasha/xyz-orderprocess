@@ -21,7 +21,7 @@ import {
   FormControl,
   InputLabel,
   Pagination,
-  LinearProgress, // <-- import the progress bar
+  LinearProgress,
 } from '@mui/material';
 import { connect } from 'react-redux';
 import { Task, TaskStatus } from '../../types';
@@ -31,6 +31,8 @@ import {
   removeTaskThunk,
   updateTaskThunk,
   createTaskThunk,
+  setCurrentPage,
+  setItemsPerPage,
 } from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
 import AddTaskForm from '../forms/AddTaskForm';
@@ -71,13 +73,33 @@ const ALL_STATUSES: TaskStatus[] = [
   'Order Placed',
 ];
 
-const List: React.FC<{
+interface ListProps {
   tasks: Task[];
+  totalPages: number;
+  currentPage: number;
+  itemsPerPage: number; // from slice => state.tasks.limit
+  // Thunks
   getTasks: (page: number, limit: number) => void;
   removeTask: (taskId: number) => void;
   updateTask: (updatedTask: Task) => void;
   addTask: (task: Task) => void;
-}> = ({ tasks, getTasks, removeTask, updateTask, addTask }) => {
+  // Pagination actions
+  setCurrentPage: (page: number) => void;
+  setItemsPerPage: (limit: number) => void;
+}
+
+const List: React.FC<ListProps> = ({
+  tasks,
+  totalPages,
+  currentPage,
+  itemsPerPage,
+  getTasks,
+  removeTask,
+  updateTask,
+  addTask,
+  setCurrentPage,
+  setItemsPerPage,
+}) => {
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,10 +108,6 @@ const List: React.FC<{
   // For paste functionality
   const [pastedData, setPastedData] = useState<{ [key: number]: string }>({});
   const [pastedImages, setPastedImages] = useState<{ [key: number]: string[] }>({});
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // Steps and Notes dictionaries
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(tasks.length));
@@ -118,6 +136,8 @@ const List: React.FC<{
 
   // Submit new task
   const handleSubmit = (values: Task, formikBag: any) => {
+    console.log('first');
+    console.log(values, 'values');
     try {
       addTask(values);
     } catch (error) {
@@ -169,10 +189,15 @@ const List: React.FC<{
     }));
   };
 
-  // Fetch tasks on mount or pagination changes
+  /* 
+    ========== SERVER-SIDE PAGINATION ==========
+    We rely on the back end to return tasks for (currentPage, itemsPerPage).
+    Whenever these values change, fetch new data.
+  */
   useEffect(() => {
     getTasks(currentPage, itemsPerPage);
-  }, [getTasks, currentPage, itemsPerPage]);
+    console.log(tasks, 'tasks');
+  }, [currentPage, itemsPerPage]);
 
   // Check/uncheck tasks
   const handleCheckboxChange = (taskId: number) => {
@@ -181,18 +206,17 @@ const List: React.FC<{
     );
   };
 
+  // Initialize steps data for each new task
   useEffect(() => {
+    console.log(tasks, 'tasks');
     setStepsByTask((prev) => {
       const newStepsByTask = { ...prev };
-
       tasks.forEach((task) => {
         const taskIdStr = task.id.toString();
-        // If this task doesn't have an entry yet, create a default one
         if (!newStepsByTask[taskIdStr]) {
           newStepsByTask[taskIdStr] = defaultRows.map((row) => ({ ...row }));
         }
       });
-
       return newStepsByTask;
     });
   }, [tasks]);
@@ -229,29 +253,20 @@ const List: React.FC<{
     setSelectedTask((prev) => (prev?.id === task.id ? null : task));
   };
 
-  // Filter tasks by search
+  // Filter tasks by search (local client filter)
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Early return if no tasks
+  // If tasks is empty, show a message
   if (!tasks.length) {
     return <Typography variant="h6">No tasks available</Typography>;
   }
 
   // =========== TWO-BOX STATUS LOGIC ===========
-  // 1) The task's currently selected statuses
   const selectedStatuses = selectedTask?.status || [];
-
-  // 2) The unselected statuses
   const unselectedStatuses = ALL_STATUSES.filter((s) => !selectedStatuses.includes(s));
 
-  // 3) Handlers to add/remove a status
   const handleAddStatus = (status: TaskStatus) => {
     if (!selectedTask) return;
     const newStatuses = [...selectedTask.status, status];
@@ -269,9 +284,8 @@ const List: React.FC<{
   };
 
   const handleSaveTask = () => {
-    console.log("Saving task...");
-  }
-  // ============================================
+    console.log('Saving task...');
+  };
 
   return (
     <Box
@@ -322,28 +336,18 @@ const List: React.FC<{
       {/* BULK ACTIONS */}
       {tasks.length > 0 && selectedTasks.length > 0 && (
         <Box display="flex" justifyContent="center" gap={3}>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleDeleteSelected}
-            sx={{ alignSelf: 'flex-start', mb: 2 }}
-          >
+          <Button variant="contained" color="error" onClick={handleDeleteSelected}>
             Delete Selected ({selectedTasks.length})
           </Button>
 
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleSuccessSelected}
-            sx={{ alignSelf: 'flex-start', mb: 2 }}
-          >
+          <Button variant="contained" color="success" onClick={handleSuccessSelected}>
             Success Selected ({selectedTasks.length})
           </Button>
         </Box>
       )}
 
+      {/* TASK TABLE */}
       <Box display="flex" flexDirection="column" justifyContent="center" gap={3}>
-        {/* ========== TASK TABLE ========== */}
         <Box display="flex" justifyContent="center" gap={3} sx={{ mt: 2 }}>
           <Box>
             <TableContainer component={Paper} sx={{ maxWidth: 900, flex: 1 }}>
@@ -355,82 +359,80 @@ const List: React.FC<{
                         checked={selectedTasks.length === tasks.length && tasks.length > 0}
                         onChange={() =>
                           setSelectedTasks(
-                            selectedTasks.length === tasks.length
-                              ? []
-                              : tasks.map((task) => task.id)
+                            selectedTasks.length === tasks.length ? [] : tasks.map((t) => t.id)
                           )
                         }
                       />
                     </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Title</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Art</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>In Hand</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Ship</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Due Date</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Ship</TableCell>
+                    <TableCell>Art</TableCell>
+                    <TableCell>In Hand</TableCell>
+                    <TableCell>Due Date</TableCell>
+                    <TableCell>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedTasks.map((task) => (
-                    <TableRow
-                      key={task.id}
-                      onClick={() => handleRowClick(task)}
-                      sx={{
-                        cursor: 'pointer',
-                        backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
-                        textDecoration: task.status.includes('Completed') ? 'line-through' : 'none',
-                      }}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedTasks.includes(task.id)}
-                          onChange={() => handleCheckboxChange(task.id)}
-                        />
-                      </TableCell>
-                      <TableCell>{task.title}</TableCell>
-                      <TableCell>{task.ship}</TableCell>
-                      <TableCell>{task.art}</TableCell>
-                      <TableCell>{task.inHand}</TableCell>
-                      <TableCell>{task.dueDate}</TableCell>
-                      <TableCell>
-                        <Box display="flex" gap={1}>
-                          {task.status.map((status) => (
-                            <Box key={status} display="flex" alignItems="center" gap={1}>
-                              <Box
-                                sx={{
-                                  width: 12,
-                                  height: 12,
-                                  borderRadius: '3px',
-                                  backgroundColor: statusColors[status],
-                                }}
-                              />
-                              <Typography variant="body2">{status}</Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredTasks.map((task, index) => {
+                    //console.log('Task in map:', task);
+
+                    return (
+                      <TableRow
+                        key={task.id ?? index}
+                        onClick={() => handleRowClick(task)}
+                        sx={{
+                          cursor: 'pointer',
+                          backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
+                          textDecoration: task.status.includes('Completed')
+                            ? 'line-through'
+                            : 'none',
+                        }}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTasks.includes(task.id)}
+                            onChange={() => handleCheckboxChange(task.id)}
+                          />
+                        </TableCell>
+                        <TableCell>{task.title}</TableCell>
+                        <TableCell>{task.ship}</TableCell>
+                        <TableCell>{task.art}</TableCell>
+                        <TableCell>{task.inHand}</TableCell>
+                        <TableCell>{task.dueDate}</TableCell>
+                        <TableCell>
+                          <Box display="flex" gap={1}>
+                            {task.status.map((status) => (
+                              <Box key={status} display="flex" alignItems="center" gap={1}>
+                                <Box
+                                  sx={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: '3px',
+                                    backgroundColor: statusColors[status],
+                                  }}
+                                />
+                                <Typography variant="body2">{status}</Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
           </Box>
 
-          {/* ========== RIGHT SIDE: SELECTED TASK DETAILS ========== */}
+          {/* RIGHT SIDE: SELECTED TASK DETAILS */}
           <Box>
             {selectedTask && (
               <>
                 <Box sx={{ width: '100%', mt: 2, mb: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    fullWidth
-                    onClick={handleSaveTask} 
-                  >
+                  <Button variant="contained" color="success" fullWidth onClick={handleSaveTask}>
                     Save Task
                   </Button>
                 </Box>
-                {/* Top info section */}
                 <Box
                   minHeight="200px"
                   p={2}
@@ -472,13 +474,12 @@ const List: React.FC<{
                       ))}
                     </Box>
 
-                    {/* ====== PROGRESS BAR ====== */}
+                    {/* PROGRESS BAR */}
                     <Typography variant="subtitle1" gutterBottom>
                       Progress Bar
                     </Typography>
                     {(() => {
-                      // total statuses vs. how many are selected
-                      const totalStatuses = ALL_STATUSES.length; // e.g. 5
+                      const totalStatuses = ALL_STATUSES.length;
                       const doneStatuses = selectedStatuses.length;
                       const progressPercent = Math.round((doneStatuses / totalStatuses) * 100);
 
@@ -600,8 +601,9 @@ const List: React.FC<{
             <Select
               value={itemsPerPage}
               onChange={(e) => {
+                // 1) Set the new itemsPerPage in Redux
                 setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
+                // 2) Optionally reset current page to 1 in the slice
               }}
               label="Items Per Page"
             >
@@ -614,9 +616,12 @@ const List: React.FC<{
           </FormControl>
 
           <Pagination
-            count={Math.ceil(filteredTasks.length / itemsPerPage)}
+            count={totalPages}
             page={currentPage}
-            onChange={(event, value) => setCurrentPage(value)}
+            onChange={(event, value) => {
+              // 1) Set the new currentPage in Redux
+              setCurrentPage(value);
+            }}
             color="primary"
           />
         </Box>
@@ -625,15 +630,21 @@ const List: React.FC<{
   );
 };
 
-const mapStateToProps = ({ tasks: { tasks } }: any) => ({
+const mapStateToProps = ({ tasks: { tasks, totalPages, currentPage, limit } }: any) => ({
   tasks,
+  totalPages,
+  currentPage,
+  itemsPerPage: limit,
 });
 
+// Map Redux dispatch to props
 const mapDispatchToProps = (dispatch: any) => ({
   getTasks: (page: number, limit: number) => dispatch(getTasksThunk({ page, limit })),
   removeTask: (id: number) => dispatch(removeTaskThunk(id)),
   updateTask: (task: Task) => dispatch(updateTaskThunk(task)),
   addTask: (task: Task) => dispatch(createTaskThunk(task)),
+  setCurrentPage: (page: number) => dispatch(setCurrentPage(page)),
+  setItemsPerPage: (limit: number) => dispatch(setItemsPerPage(limit)),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(List);

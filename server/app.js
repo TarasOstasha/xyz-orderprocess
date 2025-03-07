@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { STATIC_PATH } = require('./constants');
 const cors = require('cors');
