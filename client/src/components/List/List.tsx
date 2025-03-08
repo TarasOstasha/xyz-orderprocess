@@ -1,3 +1,4 @@
+import { parseISO, format, isValid } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from 'react';
 import {
@@ -89,6 +90,20 @@ interface ListProps {
   setItemsPerPage: (limit: number) => void;
 }
 
+interface PastedEntry {
+  text: string;
+  images: string[];
+}
+
+interface SavePayload {
+  taskId: number;
+  title: string;
+  status: TaskStatus[];
+  notes: OrderNotes;
+  steps: StepRow[];
+  pastedHistory: { text: string; images: string[] }[];
+}
+
 const List: React.FC<ListProps> = ({
   tasks,
   totalPages,
@@ -114,9 +129,7 @@ const List: React.FC<ListProps> = ({
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(tasks.length));
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
 
-  
-  type PastedEntry = { text: string; images: string[] };
-  const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({})
+  const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
 
   // For Add Task dialog
   const initialValues: Task = {
@@ -150,48 +163,6 @@ const List: React.FC<ListProps> = ({
     }
     formikBag.resetForm();
     handleClose();
-  };
-
-  // Paste functionality
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    if (!selectedTask) return;
-    const { items } = e.clipboardData;
-
-    // 1) Check for images
-    for (const item of items) {
-      if (item.type.indexOf('image') !== -1) {
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setPastedImages((prev) => ({
-              ...prev,
-              [selectedTask.id]: [...(prev[selectedTask.id] || []), event.target?.result as string],
-            }));
-          };
-          reader.readAsDataURL(file);
-        }
-        return;
-      }
-    }
-
-    // 2) Check for HTML content
-    const htmlData = e.clipboardData.getData('text/html');
-    if (htmlData) {
-      setPastedData((prev) => ({
-        ...prev,
-        [selectedTask.id]: htmlData,
-      }));
-      return;
-    }
-
-    // 3) Otherwise, plain text
-    const textData = e.clipboardData.getData('text');
-    setPastedData((prev) => ({
-      ...prev,
-      [selectedTask.id]: textData,
-    }));
   };
 
   /* 
@@ -232,6 +203,16 @@ const List: React.FC<ListProps> = ({
       removeTask(taskId);
     });
     setSelectedTasks([]);
+  };
+
+  // transform date
+  const formatDateString = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    if (!isValid(date)) {
+      return dateString;
+    }
+    return format(date, 'MM/dd/yyyy');
   };
 
   // Bulk mark “Completed”
@@ -288,10 +269,6 @@ const List: React.FC<ListProps> = ({
     updateTask(updatedTask);
   };
 
-  const handleSaveTask = () => {
-    console.log('Saving task...', notesByTask, pastedData, pastedImages);
-  };
-
   const handleSavePastedData = (taskId: number, text: string, images: string[]) => {
     console.log('Parent got new pasted data:', { taskId, text, images });
     // Append a new entry to the array
@@ -302,6 +279,32 @@ const List: React.FC<ListProps> = ({
         [taskId]: [...oldEntries, { text, images }],
       };
     });
+  };
+
+  const handleSaveAllData = () => {
+    if (!selectedTask) return;
+    console.log(selectedTask, 'selectedTask')
+    const taskId = selectedTask.id;
+    const notes = notesByTask[taskId] || {
+      critical: '',
+      general: '',
+      art: '',
+      pasted: '',
+      images: [],
+    };
+    const steps = stepsByTask[taskId] || [];
+    const pastedHistory = pastedByTask[taskId] || [];
+
+    const payload: SavePayload = {
+      taskId,
+      title: selectedTask.title,
+      status: selectedTask.status,
+      notes,
+      steps,
+      pastedHistory,
+    };
+
+    console.log('Sending to backend =>', payload);
   };
 
   return (
@@ -412,10 +415,10 @@ const List: React.FC<ListProps> = ({
                           />
                         </TableCell>
                         <TableCell>{task.title}</TableCell>
-                        <TableCell>{task.ship}</TableCell>
-                        <TableCell>{task.art}</TableCell>
-                        <TableCell>{task.inHand}</TableCell>
-                        <TableCell>{task.dueDate}</TableCell>
+                        <TableCell>{formatDateString(task.ship)}</TableCell>
+                        <TableCell>{formatDateString(task.art)}</TableCell>
+                        <TableCell>{formatDateString(task.inHand)}</TableCell>
+                        <TableCell>{formatDateString(task.dueDate)}</TableCell>
                         <TableCell>
                           <Box display="flex" gap={1}>
                             {task.status.map((status) => (
@@ -446,7 +449,7 @@ const List: React.FC<ListProps> = ({
             {selectedTask && (
               <>
                 <Box sx={{ width: '100%', mt: 2, mb: 2 }}>
-                  <Button variant="contained" color="success" fullWidth onClick={handleSaveTask}>
+                  <Button variant="contained" color="success" fullWidth onClick={handleSaveAllData}>
                     Save Task
                   </Button>
                 </Box>
@@ -463,12 +466,10 @@ const List: React.FC<ListProps> = ({
                   }}
                 >
                   <Typography variant="h6">{selectedTask.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Due Date: {selectedTask.dueDate}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Priority: {selectedTask.priority}
-                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Art: {formatDateString(selectedTask.art)}</Typography>
+                  <Typography variant="body2" color="text.secondary">In Hand: {formatDateString(selectedTask.inHand)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Due Date: {formatDateString(selectedTask.dueDate)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Priority: {formatDateString(selectedTask.priority)}</Typography>
 
                   {/* TWO-BOX STATUS UI */}
                   <Box mt={2}>
@@ -604,33 +605,31 @@ const List: React.FC<ListProps> = ({
                   onSavePastedData={handleSavePastedData}
                 />
                 {selectedTask && pastedByTask[selectedTask.id] && (
-  <Box mt={2}>
-    <Typography variant="h6">Pasted Data History</Typography>
-    {pastedByTask[selectedTask.id].map((entry, idx) => (
-      <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #ddd' }}>
-        <Typography variant="subtitle1">
-          Entry #{idx + 1}
-        </Typography>
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#333' }}>
-          {entry.text}
-        </Typography>
+                  <Box mt={2}>
+                    {/* <Typography variant="h6">Pasted Data History</Typography> */}
+                    {pastedByTask[selectedTask.id].map((entry, idx) => (
+                      <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #ddd' }}>
+                        {/* <Typography variant="subtitle1">Entry #{idx + 1}</Typography> */}
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#333' }}>
+                          {entry.text}
+                        </Typography>
 
-        {entry.images.length > 0 && (
-          <Box mt={1} display="flex" flexDirection="column" gap={1}>
-            {entry.images.map((img, i2) => (
-              <img
-                key={i2}
-                src={img}
-                alt="Pasted"
-                style={{ width: '100%', border: '1px solid #ccc' }}
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
-    ))}
-  </Box>
-)}
+                        {entry.images.length > 0 && (
+                          <Box mt={1} display="flex" flexDirection="column" gap={1}>
+                            {entry.images.map((img, i2) => (
+                              <img
+                                key={i2}
+                                src={img}
+                                alt="Pasted"
+                                style={{ width: '100%', border: '1px solid #ccc' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </>
             )}
           </Box>

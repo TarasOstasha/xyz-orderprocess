@@ -129,7 +129,7 @@ const OrderNotesPastedData: React.FC<OrderNotesPastedDataProps> = ({
           {looksLikeHtml(content) ? (
             <Typography variant="body1" dangerouslySetInnerHTML={{ __html: content }} />
           ) : (
-            <Typography variant="body1">{content}</Typography>
+            <Typography variant="body1" sx={{ color: '#333' }}>{content}</Typography>
           )}
         </Box>
       )}
