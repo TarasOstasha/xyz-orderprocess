@@ -1,13 +1,16 @@
 // OrderStepsTable.tsx
-import React from "react";
-import { DataGrid, GridColDef, GridRowModel } from "@mui/x-data-grid";
-import { Box, Typography } from "@mui/material";
-import TopNotesTable from "./TopNotesTable";
+import React from 'react';
+import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
+import { Box, Typography, Button } from '@mui/material';
+import TopNotesTable from './TopNotesTable';
 
 export interface OrderNotes {
   critical: string;
   general: string;
   art: string;
+  // Optional new fields:
+  pasted?: any; // for HTML or text
+  images?: string[]; // base64-encoded images
 }
 
 export interface StepRow {
@@ -28,11 +31,21 @@ type NotesByTask = {
 };
 
 const columns: GridColDef[] = [
-  { field: "step",  headerName: "Step",  width: 220, editable: false },
-  { field: "date",  headerName: "Date",  width: 90,  editable: true },
-  { field: "by",    headerName: "By",    width: 60,  editable: true },
-  { field: "notes", headerName: "Notes", width: 300, editable: true },
+  { field: 'step', headerName: 'Step', width: 220, editable: false },
+  { field: 'date', headerName: 'Date', width: 90, editable: true },
+  { field: 'by', headerName: 'By', width: 60, editable: true },
+  { field: 'notes', headerName: 'Notes', width: 300, editable: true },
 ];
+
+// A mapping from taskId => the pasted text/HTML
+export type PastedDataByTask = {
+  [taskId: string]: string; // holds HTML or plain text
+};
+
+// A mapping from taskId => an array of base64-encoded images
+export type PastedImagesByTask = {
+  [taskId: string]: string[]; // each string is a base64 image
+};
 
 // 2) Make sure your interface has commas or semicolons in the right places
 interface OrderStepsTableProps {
@@ -40,8 +53,9 @@ interface OrderStepsTableProps {
   stepsByTask: StepsByTask;
   setStepsByTask: React.Dispatch<React.SetStateAction<StepsByTask>>;
 
-  notesByTask: NotesByTask; 
+  notesByTask: NotesByTask;
   setNotesByTask: React.Dispatch<React.SetStateAction<NotesByTask>>;
+
 }
 
 const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
@@ -56,9 +70,9 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
 
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
-    critical: "",
-    general: "",
-    art: "",
+    critical: '',
+    general: '',
+    art: '',
   };
 
   // Called whenever user edits a row in the DataGrid
@@ -67,17 +81,20 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     setStepsByTask((prev) => {
       const newData = { ...prev };
       const oldRows = newData[taskId] || [];
-      const updatedRows = oldRows.map((row) =>
-        row.id === updatedRow.id ? updatedRow : row
-      );
+      const updatedRows = oldRows.map((row) => (row.id === updatedRow.id ? updatedRow : row));
       newData[taskId] = updatedRows;
       return newData;
     });
     return updatedRow;
   };
 
+  const handleSaveTask = () => {
+    //console.log('Saving task...', notesForThisTask, rows, taskId);
+    
+  };
+
   return (
-    <Box sx={{ width: "100%", marginTop: 2 }}>
+    <Box sx={{ width: '100%', marginTop: 2, position: 'relative' }}>
       {/* Top table for notes */}
       <TopNotesTable
         taskId={taskId}
@@ -85,9 +102,8 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
         // Wrap setNotesByTask so it updates only notes for *this* task
         setNotes={(updater) => {
           setNotesByTask((prev) => {
-            const oldNotes = prev[taskId] || { critical: "", general: "", art: "" };
-            const newNotes =
-              typeof updater === "function" ? updater(oldNotes) : updater;
+            const oldNotes = prev[taskId] || { critical: '', general: '', art: '' };
+            const newNotes = typeof updater === 'function' ? updater(oldNotes) : updater;
             return {
               ...prev,
               [taskId]: newNotes,
@@ -99,24 +115,28 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
       <Typography variant="h6" gutterBottom>
         Order Steps
       </Typography>
-
+      {/* <Box sx={{ width: '100%', mt: 2, mb: 2, position: 'absolute', bottom: '0' }}>
+        <Button variant="contained" color="success" fullWidth onClick={handleSaveTask}>
+          Save Task
+        </Button>
+      </Box> */}
       <Box sx={{ height: 700 }}>
         <DataGrid
           rows={rows}
           columns={columns}
           processRowUpdate={handleProcessRowUpdate}
           sx={{
-            "& .MuiDataGrid-row:nth-of-type(1)": { backgroundColor: "#90EE90" },
-            "& .MuiDataGrid-row:nth-of-type(2)": { backgroundColor: "#90EE90" },
-            "& .MuiDataGrid-row:nth-of-type(3)": { backgroundColor: "#90EE90" },
+            '& .MuiDataGrid-row:nth-of-type(1)': { backgroundColor: '#90EE90' },
+            '& .MuiDataGrid-row:nth-of-type(2)': { backgroundColor: '#90EE90' },
+            '& .MuiDataGrid-row:nth-of-type(3)': { backgroundColor: '#90EE90' },
 
-            "& .MuiDataGrid-row:nth-of-type(4)": { backgroundColor: "#FFC0CB" },
-            "& .MuiDataGrid-row:nth-of-type(5)": { backgroundColor: "#FFC0CB" },
-            "& .MuiDataGrid-row:nth-of-type(6)": { backgroundColor: "#FFC0CB" },
+            '& .MuiDataGrid-row:nth-of-type(4)': { backgroundColor: '#FFC0CB' },
+            '& .MuiDataGrid-row:nth-of-type(5)': { backgroundColor: '#FFC0CB' },
+            '& .MuiDataGrid-row:nth-of-type(6)': { backgroundColor: '#FFC0CB' },
 
-            "& .MuiDataGrid-row:nth-of-type(7)": { backgroundColor: "#ADD8E6" },
-            "& .MuiDataGrid-row:nth-of-type(8)": { backgroundColor: "#ADD8E6" },
-            "& .MuiDataGrid-row:nth-of-type(9)": { backgroundColor: "#ADD8E6" },
+            '& .MuiDataGrid-row:nth-of-type(7)': { backgroundColor: '#ADD8E6' },
+            '& .MuiDataGrid-row:nth-of-type(8)': { backgroundColor: '#ADD8E6' },
+            '& .MuiDataGrid-row:nth-of-type(9)': { backgroundColor: '#ADD8E6' },
           }}
         />
       </Box>

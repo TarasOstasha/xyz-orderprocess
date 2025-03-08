@@ -37,6 +37,7 @@ import {
 import styles from './List.module.scss';
 import AddTaskForm from '../forms/AddTaskForm';
 import OrderStepsTable, { StepsByTask, StepRow, OrderNotes } from '../tables/OrderNotesTable';
+import OrderNotesPastedData from '../tables/OrderNotesPastedData';
 
 // Default steps for each task
 const defaultRows: StepRow[] = [
@@ -112,6 +113,10 @@ const List: React.FC<ListProps> = ({
   // Steps and Notes dictionaries
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(tasks.length));
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
+
+  
+  type PastedEntry = { text: string; images: string[] };
+  const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({})
 
   // For Add Task dialog
   const initialValues: Task = {
@@ -284,7 +289,19 @@ const List: React.FC<ListProps> = ({
   };
 
   const handleSaveTask = () => {
-    console.log('Saving task...');
+    console.log('Saving task...', notesByTask, pastedData, pastedImages);
+  };
+
+  const handleSavePastedData = (taskId: number, text: string, images: string[]) => {
+    console.log('Parent got new pasted data:', { taskId, text, images });
+    // Append a new entry to the array
+    setPastedByTask((prev) => {
+      const oldEntries = prev[taskId] || [];
+      return {
+        ...prev,
+        [taskId]: [...oldEntries, { text, images }],
+      };
+    });
   };
 
   return (
@@ -528,7 +545,7 @@ const List: React.FC<ListProps> = ({
                 />
 
                 {/* PASTE FUNCTIONALITY BOX */}
-                <Box>
+                {/* <Box>
                   <Typography variant="h6">Paste Task Data</Typography>
                   <TextField
                     label="Paste Here"
@@ -540,7 +557,6 @@ const List: React.FC<ListProps> = ({
                     onPaste={handlePaste}
                   />
 
-                  {/* Display Pasted Content (Text/HTML) */}
                   {pastedData[selectedTask.id] && (
                     <Box
                       mt={2}
@@ -561,7 +577,6 @@ const List: React.FC<ListProps> = ({
                     </Box>
                   )}
 
-                  {/* Display Pasted Images */}
                   {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
                     <Box mt={2} display="flex" flexDirection="column" gap={2}>
                       {pastedImages[selectedTask.id].map((image, index) => (
@@ -583,7 +598,39 @@ const List: React.FC<ListProps> = ({
                       ))}
                     </Box>
                   )}
-                </Box>
+                </Box> */}
+                <OrderNotesPastedData
+                  selectedTask={selectedTask}
+                  onSavePastedData={handleSavePastedData}
+                />
+                {selectedTask && pastedByTask[selectedTask.id] && (
+  <Box mt={2}>
+    <Typography variant="h6">Pasted Data History</Typography>
+    {pastedByTask[selectedTask.id].map((entry, idx) => (
+      <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #ddd' }}>
+        <Typography variant="subtitle1">
+          Entry #{idx + 1}
+        </Typography>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#333' }}>
+          {entry.text}
+        </Typography>
+
+        {entry.images.length > 0 && (
+          <Box mt={1} display="flex" flexDirection="column" gap={1}>
+            {entry.images.map((img, i2) => (
+              <img
+                key={i2}
+                src={img}
+                alt="Pasted"
+                style={{ width: '100%', border: '1px solid #ccc' }}
+              />
+            ))}
+          </Box>
+        )}
+      </Box>
+    ))}
+  </Box>
+)}
               </>
             )}
           </Box>
