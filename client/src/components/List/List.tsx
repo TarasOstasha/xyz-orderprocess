@@ -24,7 +24,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { connect } from 'react-redux';
-import { ListProps, Task, TaskStatus, PastedEntry, SavePayload } from '../../types';
+import { ListProps, Task, TaskStatus, PastedEntry, SavePayload, UpdatedTask } from '../../types';
 import { statusColors } from '../../utils/colors';
 import {
   getTasksThunk,
@@ -76,6 +76,8 @@ const List: React.FC<ListProps> = ({
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
+  const [isEditing, setIsEditing] = useState(false);
+
   /* 
     ========== SERVER-SIDE PAGINATION ==========
     We rely on the back end to return tasks for (currentPage, itemsPerPage).
@@ -100,6 +102,10 @@ const List: React.FC<ListProps> = ({
       return newStepsByTask;
     });
   }, [tasks]);
+
+  const toggleEditMode = () => {
+    setIsEditing((prev) => !prev);
+  };
 
   // Submit new task
   const handleSubmit = (values: Task, formikBag: any) => {
@@ -220,15 +226,34 @@ const List: React.FC<ListProps> = ({
     const pastedHistory = pastedByTask[taskId] || [];
 
     const payload: SavePayload = {
-      taskId,
+      id: selectedTask.id,
       title: selectedTask.title,
+      ship: selectedTask.ship,
+      art: selectedTask.art,
+      dueDate: selectedTask.dueDate,
+      inHand: selectedTask.inHand,
       status: selectedTask.status,
       notes,
       steps,
       pastedHistory,
+      priority: selectedTask.priority,
     };
-
+    updateTask(payload)
     console.log('Sending to backend =>', payload);
+  };
+
+  const handleFieldChange = (field: keyof Task, newValue: string) => {
+    if (!selectedTask) return;
+    setSelectedTask((prev) => prev && { ...prev, [field]: newValue });
+  };
+
+  const handleSaveTop = () => {
+    handleSaveAllData();
+  
+    setIsEditing(false);
+  };
+  const handleCancelTop = () => {
+    setIsEditing(false);
   };
 
   return (
@@ -389,19 +414,91 @@ const List: React.FC<ListProps> = ({
                     backgroundColor: '#fff',
                   }}
                 >
-                  <Typography variant="h6">{selectedTask.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Art: {formatDateString(selectedTask.art)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    In Hand: {formatDateString(selectedTask.inHand)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Due Date: {formatDateString(selectedTask.dueDate)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Priority: {formatDateString(selectedTask.priority)}
-                  </Typography>
+                  {!isEditing && (
+                    <>
+                      <Typography variant="h6">{selectedTask.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Art: {formatDateString(selectedTask.art)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        In Hand: {formatDateString(selectedTask.inHand)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Due Date: {formatDateString(selectedTask.dueDate)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Priority: {formatDateString(selectedTask.priority)}
+                      </Typography>
+                    </>
+                  )}
+                  {!isEditing ? (
+                    <Button variant="contained" onClick={() => setIsEditing(true)}>
+                      Edit
+                    </Button>
+                  ) : (
+                    <Box display="flex" gap={2}>
+                      <Button variant="contained" color="primary" onClick={handleSaveTop}>
+                        Save
+                      </Button>
+                      <Button variant="outlined" onClick={handleCancelTop}>
+                        Cancel
+                      </Button>
+                    </Box>
+                  )}
+                  {isEditing && (
+                    <>
+                      <TextField
+                        label="Title"
+                        variant="standard"
+                        value={selectedTask.title}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                        fullWidth
+                        sx={{ mb: 2 }}
+                      />
+
+                      <TextField
+                        label="Art"
+                        variant="standard"
+                        value={formatDateString(selectedTask.art)}
+                        onChange={(e) => handleFieldChange('art', e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+
+                      <TextField
+                        label="In Hand"
+                        variant="standard"
+                        value={formatDateString(selectedTask.inHand)}
+                        onChange={(e) => handleFieldChange('inHand', e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+
+                      <TextField
+                        label="Due Date"
+                        variant="standard"
+                        value={formatDateString(selectedTask.dueDate)}
+                        onChange={(e) => handleFieldChange('dueDate', e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+
+                      <FormControl variant="standard" sx={{ mb: 2, minWidth: 120 }}>
+                        <InputLabel>Priority</InputLabel>
+                        <Select
+                          label="Priority"
+                          value={selectedTask.priority || ''}
+                          onChange={(e) =>
+                            handleFieldChange(
+                              'priority',
+                              e.target.value as 'High' | 'Medium' | 'Low'
+                            )
+                          }
+                        >
+                          <MenuItem value="High">High</MenuItem>
+                          <MenuItem value="Medium">Medium</MenuItem>
+                          <MenuItem value="Low">Low</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </>
+                  )}
 
                   {/* TWO-BOX STATUS UI */}
                   <Box mt={2}>
@@ -563,7 +660,7 @@ const mapStateToProps = ({ tasks: { tasks, totalPages, currentPage, limit } }: a
 const mapDispatchToProps = (dispatch: any) => ({
   getTasks: (page: number, limit: number) => dispatch(getTasksThunk({ page, limit })),
   removeTask: (id: number) => dispatch(removeTaskThunk(id)),
-  updateTask: (task: Task) => dispatch(updateTaskThunk(task)),
+  updateTask: (task: SavePayload) => dispatch(updateTaskThunk(task)),
   addTask: (task: Task) => dispatch(createTaskThunk(task)),
   setCurrentPage: (page: number) => dispatch(setCurrentPage(page)),
   setItemsPerPage: (limit: number) => dispatch(setItemsPerPage(limit)),

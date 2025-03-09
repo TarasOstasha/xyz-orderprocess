@@ -14,6 +14,16 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      Task.hasMany(models.Step, {
+        foreignKey: 'taskId',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+      });
+      Task.hasOne(models.Note, {
+        foreignKey: 'taskId',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+      });
     }
   }
   Task.init({

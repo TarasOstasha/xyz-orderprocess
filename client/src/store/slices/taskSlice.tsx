@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 import { AxiosError } from 'axios';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import * as API from './../../api';
+import { SavePayload } from '../../types';
 
 // Define Task Type
 interface Task {
@@ -13,6 +14,34 @@ interface Task {
   dueDate: string;
   status: string[];
   priority: string;
+}
+
+export interface UpdatedTask {
+  taskId: number;         
+  title: string;         
+  art: string;           
+  inHand: string;         
+  dueDate: string;        
+  priority: string;       
+  status: string[];       
+  notes: {
+    critical: string;
+    general: string;
+    art: string;
+    pasted: string;
+    images: string[];
+  };
+  pastedHistory: Array<{
+    text: string;
+    images: string[];
+  }>;
+  steps: Array<{
+    id: number;
+    step: string;
+    date: string;
+    by: string;
+    notes: string;
+  }>;
 }
 
 // Define Error Type
@@ -287,12 +316,12 @@ export const removeTaskThunk = createAsyncThunk<
 
 // update task
 export const updateTaskThunk = createAsyncThunk<
-  Task, // Returned data type
-  Task, // Argument type
+  SavePayload, // Returned data type
+  SavePayload, // Argument type
   { rejectValue: TaskError }
 >('tasks/update', async (updatedTask, thunkAPI) => {
   try {
-    //console.log(updatedTask, 'updatedTask')
+    console.log(updatedTask, 'updatedTask slice')
     //const response = await API.updateTask(updatedTask.id, updatedTask); // Ensure your API supports this
     //console.log(response, 'response')
     //return response.data; // Assuming your API returns the updated task

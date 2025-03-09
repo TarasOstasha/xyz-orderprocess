@@ -23,6 +23,34 @@ export interface Task {
   priority: "High" | "Medium" | "Low";
 };
 
+export interface UpdatedTask {
+  taskId: number;         
+  title: string;         
+  art: string;           
+  inHand: string;         
+  dueDate: string;        
+  priority: string;       
+  status: string[];       
+  notes: {
+    critical: string;
+    general: string;
+    art: string;
+    pasted: string;
+    images: string[];
+  };
+  pastedHistory: Array<{
+    text: string;
+    images: string[];
+  }>;
+  steps: Array<{
+    id: number;
+    step: string;
+    date: string;
+    by: string;
+    notes: string;
+  }>;
+}
+
 export interface StepRow {
   id: number;
   step: string;
@@ -60,14 +88,24 @@ export interface PastedEntry {
   images: string[];
 };
 
-export interface SavePayload {
-  taskId: number;
-  title: string;
-  status: TaskStatus[];
-  notes: OrderNotes;
+// export interface SavePayload {
+//   taskId: number;
+//   title: string;
+//   art: string;
+//   inHand: string;
+//   dueDate: string;
+//   status: TaskStatus[];
+//   notes: OrderNotes;
+//   steps: StepRow[];
+//   pastedHistory: { text: string; images: string[] }[];
+//   priority: 'High' | 'Medium' | 'Low';
+// };
+export interface SavePayload extends Task {
+  // We already have id, ship, title, etc. from Task
+  notes: OrderNotes; 
   steps: StepRow[];
   pastedHistory: { text: string; images: string[] }[];
-};
+}
 
 export interface StepRow {
   id: number;
