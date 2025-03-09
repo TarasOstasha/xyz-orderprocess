@@ -3,60 +3,10 @@ import React from 'react';
 import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
 import { Box, Typography, Button } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
+import { StepRow, OrderStepsTableProps } from '../../types';
+import { columns } from '../../constants';
 
-export interface OrderNotes {
-  critical: string;
-  general: string;
-  art: string;
-  // Optional new fields:
-  pasted?: any; // for HTML or text
-  images?: string[]; // base64-encoded images
-}
 
-export interface StepRow {
-  id: number;
-  step: string;
-  date: string;
-  by: string;
-  notes: string; // user edits this
-}
-
-export type StepsByTask = {
-  [taskId: string]: StepRow[];
-};
-
-// 1) Add a type for the dictionary that maps each taskId to its notes
-type NotesByTask = {
-  [taskId: string]: OrderNotes;
-};
-
-const columns: GridColDef[] = [
-  { field: 'step', headerName: 'Step', width: 220, editable: false },
-  { field: 'date', headerName: 'Date', width: 90, editable: true },
-  { field: 'by', headerName: 'By', width: 60, editable: true },
-  { field: 'notes', headerName: 'Notes', width: 300, editable: true },
-];
-
-// A mapping from taskId => the pasted text/HTML
-export type PastedDataByTask = {
-  [taskId: string]: string; // holds HTML or plain text
-};
-
-// A mapping from taskId => an array of base64-encoded images
-export type PastedImagesByTask = {
-  [taskId: string]: string[]; // each string is a base64 image
-};
-
-// 2) Make sure your interface has commas or semicolons in the right places
-interface OrderStepsTableProps {
-  taskId: string;
-  stepsByTask: StepsByTask;
-  setStepsByTask: React.Dispatch<React.SetStateAction<StepsByTask>>;
-
-  notesByTask: NotesByTask;
-  setNotesByTask: React.Dispatch<React.SetStateAction<NotesByTask>>;
-
-}
 
 const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   taskId,
@@ -88,10 +38,6 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     return updatedRow;
   };
 
-  const handleSaveTask = () => {
-    //console.log('Saving task...', notesForThisTask, rows, taskId);
-    
-  };
 
   return (
     <Box sx={{ width: '100%', marginTop: 2, position: 'relative' }}>

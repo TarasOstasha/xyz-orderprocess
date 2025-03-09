@@ -1,5 +1,4 @@
 import { parseISO, format, isValid } from 'date-fns';
-import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -25,7 +24,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { connect } from 'react-redux';
-import { Task, TaskStatus } from '../../types';
+import { ListProps, Task, TaskStatus, PastedEntry, SavePayload } from '../../types';
 import { statusColors } from '../../utils/colors';
 import {
   getTasksThunk,
@@ -37,72 +36,19 @@ import {
 } from '../../store/slices/taskSlice';
 import styles from './List.module.scss';
 import AddTaskForm from '../forms/AddTaskForm';
-import OrderStepsTable, { StepsByTask, StepRow, OrderNotes } from '../tables/OrderNotesTable';
+import { StepsByTask, OrderNotes } from '../../types';
+import OrderStepsTable from '../tables/OrderNotesTable';
 import OrderNotesPastedData from '../tables/OrderNotesPastedData';
-
-// Default steps for each task
-const defaultRows: StepRow[] = [
-  { id: 1, step: 'PAYMENT PROCESSED', date: '', by: '', notes: '' },
-  { id: 2, step: 'Order Placed', date: '', by: '', notes: '' },
-  { id: 3, step: 'Order Checked', date: '', by: '', notes: '' },
-  { id: 4, step: 'Vendor Confirmation Checked', date: '', by: '', notes: '' },
-  { id: 5, step: 'Graphics Sent to Vendor', date: '', by: '', notes: '' },
-  { id: 6, step: 'Vendor Proof Sent to Client', date: '', by: '', notes: '' },
-  { id: 7, step: 'Client Approval Sent to Vendor', date: '', by: '', notes: '' },
-  { id: 8, step: 'Order Shipped', date: '2/17', by: '', notes: '' },
-  { id: 9, step: 'Pictures Sent to Client', date: '', by: '', notes: '' },
-];
+import { ALL_STATUSES, defaultRows, initialValues } from '../../constants';
 
 // Initialize steps for each task ID
-function createInitialData(count: number): StepsByTask {
+const createInitialData = (count: number): StepsByTask => {
   const result: StepsByTask = {};
   for (let i = 1; i <= count; i++) {
     result[i.toString()] = defaultRows.map((row) => ({ ...row }));
   }
   return result;
-}
-
-// All possible statuses
-const ALL_STATUSES: TaskStatus[] = [
-  'Paid',
-  'In Progress',
-  'Completed',
-  'On Hold',
-  'Canceled',
-  'Approved',
-  'Order from Vendor Confirmed',
-  'Order Checked',
-  'Order Placed',
-];
-
-interface ListProps {
-  tasks: Task[];
-  totalPages: number;
-  currentPage: number;
-  itemsPerPage: number; // from slice => state.tasks.limit
-  // Thunks
-  getTasks: (page: number, limit: number) => void;
-  removeTask: (taskId: number) => void;
-  updateTask: (updatedTask: Task) => void;
-  addTask: (task: Task) => void;
-  // Pagination actions
-  setCurrentPage: (page: number) => void;
-  setItemsPerPage: (limit: number) => void;
-}
-
-interface PastedEntry {
-  text: string;
-  images: string[];
-}
-
-interface SavePayload {
-  taskId: number;
-  title: string;
-  status: TaskStatus[];
-  notes: OrderNotes;
-  steps: StepRow[];
-  pastedHistory: { text: string; images: string[] }[];
-}
+};
 
 const List: React.FC<ListProps> = ({
   tasks,
@@ -121,49 +67,14 @@ const List: React.FC<ListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
 
-  // For paste functionality
-  const [pastedData, setPastedData] = useState<{ [key: number]: string }>({});
-  const [pastedImages, setPastedImages] = useState<{ [key: number]: string[] }>({});
-
   // Steps and Notes dictionaries
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(tasks.length));
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
-
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
-
-  // For Add Task dialog
-  const initialValues: Task = {
-    id: parseInt(
-      uuidv4()
-        .replace(/[^0-9]/g, '')
-        .slice(0, 10),
-      10
-    ),
-    title: '',
-    ship: '',
-    art: '',
-    inHand: '',
-    dueDate: '',
-    status: [],
-    priority: '' as 'High' | 'Medium' | 'Low',
-  };
 
   // Open/close the Add Task dialog
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
-
-  // Submit new task
-  const handleSubmit = (values: Task, formikBag: any) => {
-    console.log('first');
-    console.log(values, 'values');
-    try {
-      addTask(values);
-    } catch (error) {
-      console.error('Error adding task:', error);
-    }
-    formikBag.resetForm();
-    handleClose();
-  };
 
   /* 
     ========== SERVER-SIDE PAGINATION ==========
@@ -174,13 +85,6 @@ const List: React.FC<ListProps> = ({
     getTasks(currentPage, itemsPerPage);
     console.log(tasks, 'tasks');
   }, [currentPage, itemsPerPage]);
-
-  // Check/uncheck tasks
-  const handleCheckboxChange = (taskId: number) => {
-    setSelectedTasks((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
-    );
-  };
 
   // Initialize steps data for each new task
   useEffect(() => {
@@ -196,6 +100,26 @@ const List: React.FC<ListProps> = ({
       return newStepsByTask;
     });
   }, [tasks]);
+
+  // Submit new task
+  const handleSubmit = (values: Task, formikBag: any) => {
+    console.log('first');
+    console.log(values, 'values');
+    try {
+      addTask(values);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+    formikBag.resetForm();
+    handleClose();
+  };
+
+  // Check/uncheck tasks
+  const handleCheckboxChange = (taskId: number) => {
+    setSelectedTasks((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
 
   // Bulk delete
   const handleDeleteSelected = () => {
@@ -283,7 +207,7 @@ const List: React.FC<ListProps> = ({
 
   const handleSaveAllData = () => {
     if (!selectedTask) return;
-    console.log(selectedTask, 'selectedTask')
+    console.log(selectedTask, 'selectedTask');
     const taskId = selectedTask.id;
     const notes = notesByTask[taskId] || {
       critical: '',
@@ -466,10 +390,18 @@ const List: React.FC<ListProps> = ({
                   }}
                 >
                   <Typography variant="h6">{selectedTask.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">Art: {formatDateString(selectedTask.art)}</Typography>
-                  <Typography variant="body2" color="text.secondary">In Hand: {formatDateString(selectedTask.inHand)}</Typography>
-                  <Typography variant="body2" color="text.secondary">Due Date: {formatDateString(selectedTask.dueDate)}</Typography>
-                  <Typography variant="body2" color="text.secondary">Priority: {formatDateString(selectedTask.priority)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Art: {formatDateString(selectedTask.art)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    In Hand: {formatDateString(selectedTask.inHand)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Due Date: {formatDateString(selectedTask.dueDate)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Priority: {formatDateString(selectedTask.priority)}
+                  </Typography>
 
                   {/* TWO-BOX STATUS UI */}
                   <Box mt={2}>
@@ -544,62 +476,6 @@ const List: React.FC<ListProps> = ({
                   notesByTask={notesByTask}
                   setNotesByTask={setNotesByTask}
                 />
-
-                {/* PASTE FUNCTIONALITY BOX */}
-                {/* <Box>
-                  <Typography variant="h6">Paste Task Data</Typography>
-                  <TextField
-                    label="Paste Here"
-                    fullWidth
-                    multiline
-                    rows={4}
-                    margin="dense"
-                    variant="outlined"
-                    onPaste={handlePaste}
-                  />
-
-                  {pastedData[selectedTask.id] && (
-                    <Box
-                      mt={2}
-                      p={2}
-                      sx={{
-                        backgroundColor: '#f9f9f9',
-                        borderRadius: 1,
-                        border: '1px solid #ddd',
-                        maxHeight: '1000px',
-                        overflowY: 'auto',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      <Typography
-                        variant="body1"
-                        dangerouslySetInnerHTML={{ __html: pastedData[selectedTask.id] }}
-                      />
-                    </Box>
-                  )}
-
-                  {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
-                    <Box mt={2} display="flex" flexDirection="column" gap={2}>
-                      {pastedImages[selectedTask.id].map((image, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            maxWidth: '100%',
-                            maxHeight: '1000px',
-                            overflowY: 'auto',
-                            border: '1px solid #ddd',
-                          }}
-                        >
-                          <img
-                            src={image}
-                            alt="Pasted"
-                            style={{ width: '100%', height: 'auto', display: 'block' }}
-                          />
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box> */}
                 <OrderNotesPastedData
                   selectedTask={selectedTask}
                   onSavePastedData={handleSavePastedData}
