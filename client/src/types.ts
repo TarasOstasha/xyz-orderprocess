@@ -139,3 +139,16 @@ export interface OrderStepsTableProps {
   setNotesByTask: React.Dispatch<React.SetStateAction<NotesByTask>>;
 }
 
+export interface TaskError {
+  status: number;
+  message: string;
+}
+
+export interface TasksState {
+  tasks: Task[];
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+  isFetching: boolean;
+  error: TaskError | null;
+}

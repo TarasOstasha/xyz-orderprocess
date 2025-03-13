@@ -31,3 +31,77 @@ Content-Type: application/json
 
 ### 204 {}
 DELETE http://localhost:5000/api/tasks/17
+
+
+### 200 {task}
+PUT http://localhost:5000/api/tasks/1
+Content-Type: application/json
+
+{
+  "title": "Order 202",
+  "ship": "Ship2 // BD",
+  "art": "2028-11-01T20:00:00-04:00",
+  "inHand": "2030-11-01T20:00:00-04:00",
+  "dueDate": "2030-11-01T20:00:00-04:00",
+  "status": ["Paid", "Order from Vendor Confirmed"],
+  "priority": "Low",
+  "notes": { "critical": "critical", "general": "general", "art": "art" },
+  "steps": [
+    { "id":1,"step":"PAYMENT PROCESSED","date":"5/15","by":"TO","notes":"PAYMENT PROCESSED" },
+    { "id":2,"step":"Order Placed","date":"5/15","by":"TO","notes":"Order Placed" },
+    { "id":3,"step":"Order Checked","date":"5/15","by":"TO","notes":"Order Checked" },
+    { "id":4,"step":"Vendor Confirmation Checked","date":"5/15","by":"TO","notes":"Vendor Confirmation Checked" },
+    { "id":5,"step":"Graphics Sent to Vendor","date":"5/15","by":"TO","notes":"Graphics Sent to Vendor" },
+    { "id":6,"step":"Vendor Proof Sent to Client","date":"5/15","by":"TO","notes":"Vendor Proof Sent to Client" },
+    { "id":7,"step":"Client Approval Sent to Vendor","date":"5/15","by":"TO","notes":"Client Approval Sent to Vendor" },
+    { "id":8,"step":"Order Shipped","date":"5/15","by":"TO","notes":"Order Shipped" },
+    { "id":9,"step":"Pictures Sent to Client","date":"5/15","by":"TO","notes":"Pictures Sent to Client" }
+  ],
+  "pastedHistory": [
+    { "text":"some text", "images":[] },
+    { "text":"another text", "images":[] }
+  ]
+}
+
+### 200 {task}
+PUT http://localhost:5000/api/tasks/1
+Content-Type: application/json
+
+{
+    "critical": "Critical Order Notes dsf ",
+    "general": "General Order Notes df ",
+    "art": "Art Related Order Notes sdsd f"
+}
+
+### 200 {task}
+PUT http://localhost:5000/api/tasks/2
+Content-Type: application/json
+
+{
+  "title": "Order 303",
+  "ship": "Ship2 // BD",
+  "art": "2028-11-01T20:00:00-04:00",
+  "inHand": "2030-11-01T20:00:00-04:00",
+  "dueDate": "2030-11-01T20:00:00-04:00",
+  "status": ["Paid"],
+  "priority": "Low",
+  "notes": { "critical": "test 111", "general": "test 111", "art": "test 111" },
+  "steps": [
+    { "id":1,"step":"PAYMENT PROCESSED","date":"5/15","by":"TO","notes":"PAYMENT PROCESSED test" },
+    { "id":2,"step":"Order Placed","date":"5/15","by":"TO","notes":"Order Placed test" },
+    { "id":3,"step":"Order Checked","date":"5/15","by":"TO","notes":"Order Checked test" },
+    { "id":4,"step":"Vendor Confirmation Checked","date":"5/15","by":"TO","notes":"Vendor Confirmation Checked test" },
+    { "id":5,"step":"Graphics Sent to Vendor","date":"5/15","by":"TO","notes":"Graphics Sent to Vendor test" },
+    { "id":6,"step":"Vendor Proof Sent to Client","date":"5/15","by":"TO","notes":"Vendor Proof Sent to Client" },
+    { "id":7,"step":"Client Approval Sent to Vendor","date":"5/15","by":"TO","notes":"Client Approval Sent to Vendor" },
+    { "id":8,"step":"Order Shipped","date":"5/15","by":"TO","notes":"Order Shipped test" },
+    { "id":9,"step":"Pictures Sent to Client","date":"5/15","by":"TO","notes":"Pictures Sent to Client" }
+  ],
+    "pastedHistory": [
+    { "text":"some text", "images":"public/test.jpg" },
+    { "text":"another text", "images":"public\\images\\pastedHistory[0].images-1741660551903.png" }
+  ]
+}
+
+### 200 {task}
+GET http://localhost:5000/api/tasks/2

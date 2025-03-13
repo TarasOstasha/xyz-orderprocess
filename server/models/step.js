@@ -19,8 +19,13 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Step.init({
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+    },
     step: DataTypes.STRING,
-    date: DataTypes.DATE,
+    date: DataTypes.STRING,
     by: DataTypes.STRING,
     notes: DataTypes.STRING,
     taskId: DataTypes.INTEGER

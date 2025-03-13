@@ -19,9 +19,14 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Note.init({
-    critical: DataTypes.STRING,
-    general: DataTypes.STRING,
-    art: DataTypes.STRING,
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+    },
+    critical: DataTypes.TEXT,
+    general: DataTypes.TEXT,
+    art: DataTypes.TEXT,
     taskId: DataTypes.INTEGER
   }, {
     sequelize,

@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import { AxiosError } from 'axios';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import * as API from './../../api';
-import { SavePayload } from '../../types';
+import { SavePayload, TaskError, TasksState } from '../../types';
 
 // Define Task Type
 interface Task {
@@ -16,48 +16,48 @@ interface Task {
   priority: string;
 }
 
-export interface UpdatedTask {
-  taskId: number;         
-  title: string;         
-  art: string;           
-  inHand: string;         
-  dueDate: string;        
-  priority: string;       
-  status: string[];       
-  notes: {
-    critical: string;
-    general: string;
-    art: string;
-    pasted: string;
-    images: string[];
-  };
-  pastedHistory: Array<{
-    text: string;
-    images: string[];
-  }>;
-  steps: Array<{
-    id: number;
-    step: string;
-    date: string;
-    by: string;
-    notes: string;
-  }>;
-}
+// export interface UpdatedTask {
+//   taskId: number;         
+//   title: string;         
+//   art: string;           
+//   inHand: string;         
+//   dueDate: string;        
+//   priority: string;       
+//   status: string[];       
+//   notes: {
+//     critical: string;
+//     general: string;
+//     art: string;
+//     pasted: string;
+//     images: string[];
+//   };
+//   pastedHistory: Array<{
+//     text: string;
+//     images: string[];
+//   }>;
+//   steps: Array<{
+//     id: number;
+//     step: string;
+//     date: string;
+//     by: string;
+//     notes: string;
+//   }>;
+// }
 
 // Define Error Type
-interface TaskError {
-  status: number;
-  message: string;
-}
+// interface TaskError {
+//   status: number;
+//   message: string;
+// }
 
-interface TasksState {
-  tasks: Task[];
-  currentPage: number;
-  totalPages: number;
-  limit: number;
-  isFetching: boolean;
-  error: TaskError | null;
-}
+// interface TasksState {
+//   tasks: Task[];
+//   currentPage: number;
+//   totalPages: number;
+//   limit: number;
+//   isFetching: boolean;
+//   error: TaskError | null;
+// }
 
 // test data
 // const initialTasks: Task[] = [
@@ -322,9 +322,9 @@ export const updateTaskThunk = createAsyncThunk<
 >('tasks/update', async (updatedTask, thunkAPI) => {
   try {
     console.log(updatedTask, 'updatedTask slice')
-    //const response = await API.updateTask(updatedTask.id, updatedTask); // Ensure your API supports this
-    //console.log(response, 'response')
-    //return response.data; // Assuming your API returns the updated task
+    const response = await API.updateTask(updatedTask); // Ensure your API supports this
+    console.log(response, 'response')
+    return response.data; // Assuming your API returns the updated task
     return updatedTask
   } catch (err: any) {
     return thunkAPI.rejectWithValue({

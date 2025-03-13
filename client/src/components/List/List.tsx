@@ -211,6 +211,8 @@ const List: React.FC<ListProps> = ({
     });
   };
 
+
+
   const handleSaveAllData = () => {
     if (!selectedTask) return;
     console.log(selectedTask, 'selectedTask');
@@ -239,7 +241,7 @@ const List: React.FC<ListProps> = ({
       priority: selectedTask.priority,
     };
     updateTask(payload)
-    console.log('Sending to backend =>', payload);
+    //console.log('Sending to backend =>', payload);
   };
 
   const handleFieldChange = (field: keyof Task, newValue: string) => {

@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      Note.belongsTo(models.Task, {
+      PastedHistory.belongsTo(models.Task, {
         foreignKey: 'taskId',
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE'
@@ -19,12 +19,17 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   PastedHistory.init({
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+    },
     text: DataTypes.STRING,
     images: DataTypes.STRING,
     taskId: DataTypes.INTEGER
   }, {
     sequelize,
-    modelName: 'pastedHistory',
+    modelName: 'PastedHistory',
     underscored: true
   });
   return PastedHistory;
