@@ -7,22 +7,20 @@ const _ = require('lodash');
  */
 function removeTimestamps(value) {
   if (Array.isArray(value)) {
-    // If it's an array, map over each element recursively
     return value.map(removeTimestamps);
+  } else if (value instanceof Date) {
+    // Convert Date -> string
+    return value.toISOString();
   } else if (value && typeof value === 'object') {
-    // If it's an object, omit the timestamp fields
+    // Omit fields like createdAt/updatedAt if you want
     const newObj = _.omit(value, ['createdAt', 'updatedAt']);
-
-    // Then recurse into each remaining key
     for (const key of Object.keys(newObj)) {
-      if (typeof newObj[key] === 'object' && newObj[key] !== null) {
-        newObj[key] = removeTimestamps(newObj[key]);
-      }
+      newObj[key] = removeTimestamps(newObj[key]);
     }
     return newObj;
   }
-  // For primitives (string, number, null, etc.), just return as is
-  return value;
+  return value; // primitives remain as is
 }
+
 
 module.exports = { removeTimestamps };

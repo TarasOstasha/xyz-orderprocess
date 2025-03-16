@@ -1,8 +1,10 @@
-// const { Task, User } = require('../db/models');
+
 const _ = require('lodash');
 const { removeTimestamps } = require('../utils/removeTimestamps');
+//const { getUpdatedTask, rebuildPastedHistory } = require('../utils/helpers');
+const { getUpdatedTask, rebuildPastedHistory, removeTimestamps } = require('../utils');
 const createHttpError = require('http-errors');
-// const { Task, Notes, Steps, PastedHistory, sequelize  } = require('./../models');
+
 const { Task, Note, Step, PastedHistory } = require('../models');
 
 // const initialTasks = [
@@ -225,163 +227,186 @@ module.exports.deleteTaskById = async (req, res, next) => {
   }
 };
 
-// module.exports.updateTaskById = async (req, res, next) => {
-//   const { id } = req.params;
-//   const { body } = req;
-//   const { files } = req;
-//   console.log(files, 'files')
-//   console.log(body, 'body')
-//   console.log(id, 'id')
-//   try {
-
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 module.exports.updateTaskById = async (req, res, next) => {
+  console.log(req.body);
+  console.log(req.files);
   try {
     const taskId = req.params.id;
 
-    const task = await Task.findByPk(taskId, {
-      include: [Note, Step, PastedHistory],
-    });
-
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    // // 2) Update the main Task fields with "task.set()"
+    // 1) Parse JSON fields if needed (status, notes, steps, etc.)
     if (typeof req.body.status === 'string') {
       try {
         req.body.status = JSON.parse(req.body.status);
-      } catch (error) {
-        // If parsing fails, you might handle it or default to an empty array
-        console.error('Invalid JSON for status', error);
-        req.body.status = [];
+      } catch (err) {
+        console.error('Invalid JSON for status:', err);
+        req.body.status = []; // or leave undefined
       }
     }
-    task.set(req.body);
-    await task.save();
-    //console.log('req.body.notes:', req.body.notes);
+    if (typeof req.body.notes === 'string') {
+      try {
+        req.body.notes = JSON.parse(req.body.notes);
+      } catch (err) {
+        console.error('Invalid JSON for notes:', err);
+        req.body.notes = undefined;
+      }
+    }
+    if (typeof req.body.steps === 'string') {
+      try {
+        req.body.steps = JSON.parse(req.body.steps);
+      } catch (err) {
+        console.error('Invalid JSON for steps:', err);
+        req.body.steps = undefined;
+      }
+    }
+    if (typeof req.body.pastedHistory === 'string') {
+      try {
+        req.body.pastedHistory = JSON.parse(req.body.pastedHistory);
+      } catch (err) {
+        console.error('Invalid JSON for pastedHistory:', err);
+        req.body.pastedHistory = undefined;
+      }
+    }
 
-    if (req.body.notes) {
-      if (!task.Note) {
-        // create one
+    // 2) PARTIAL update the main Task columns
+    //    We only set fields that exist in req.body (so if a field is missing, old data stays).
+    const updatableFields = ['title', 'ship', 'art', 'inHand', 'dueDate', 'status', 'priority'];
+    const taskFields = {};
+    for (const field of updatableFields) {
+      if (req.body[field] !== undefined) {
+        taskFields[field] = req.body[field];
+      }
+    }
+
+    // 3) Update the Task in one go (excluding notes/steps/pastedHistory)
+    const [count, [updatedTask]] = await Task.update(taskFields, {
+      where: { id: taskId },
+      returning: true,
+    });
+    if (!count) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // 4) Handle Notes only if provided
+    if (req.body.notes !== undefined) {
+      const existingNote = await Note.findOne({ where: { taskId } });
+      if (!existingNote) {
+        // create
         await Note.create({
           ...req.body.notes,
-          taskId: task.id,
+          taskId,
         });
       } else {
-        try {
-          task.Note.set(req.body.notes);
-          await task.Note.save();
-        } catch (err) {
-          console.error('Error updating note:', err);
-        }
+        // update existing
+        existingNote.set(req.body.notes);
+        await existingNote.save();
       }
     }
 
+    // 5) Handle Steps only if provided
+    //    If steps is missing => old steps remain
     if (Array.isArray(req.body.steps)) {
-      // 1) Delete all existing steps for this task
-      await Step.destroy({ where: { taskId: task.id } });
-    
-      // 2) Insert new steps
+      // remove old steps
+      await Step.destroy({ where: { taskId } });
+      // create new steps
       for (const stepData of req.body.steps) {
-        // Let the DB auto-increment "id" (omit stepData.id)
-        await Step.create({
-          ...stepData,
-          id: undefined,   // or just omit "id" entirely
-          taskId: task.id
-        });
+        await Step.create({ ...stepData, taskId });
       }
     }
-    
+
+    // 6) Handle PastedHistory only if provided
+    // If your front end sends bracketed fields for pastedHistory, rebuild them:
+    const bracketedPH =  rebuildPastedHistory(req);
+    if (bracketedPH.length > 0) {
+      // Attach to req.body so your existing upsert logic sees it
+      req.body.pastedHistory = bracketedPH;
+    }
+    console.log(req.body.pastedHistory, 'req.body.pastedHistory');
+
+    // ... any other parsing for status, notes, steps, etc. ...
+    // e.g. parse JSON if they're strings
+
+    // Then your partial-merge upsert logic:
     if (Array.isArray(req.body.pastedHistory)) {
-      // 1) Fetch all existing PastedHistory rows for this task
-      const existingPH = await PastedHistory.findAll({
-        where: { taskId: task.id }
-      });
-    
-      // Convert them into a Map keyed by `id` for quick lookup
-      const existingMap = new Map(
-        existingPH.map((ph) => [ph.id, ph])
-      );
-    
-      // 2) Loop through the new array from the request
+      const existingPH = await PastedHistory.findAll({ where: { taskId } });
+      const existingMap = new Map(existingPH.map((ph) => [ph.id, ph]));
+
       for (const newItem of req.body.pastedHistory) {
+        console.log('Incoming newItem =>', newItem);
+
+        newItem.taskId = taskId; // ensure correct FK
+
         if (newItem.id) {
-          // This suggests an existing row we might update
           const existingRow = existingMap.get(newItem.id);
-    
           if (existingRow) {
-            // We found a matching row in DB => update it
-            existingRow.set(newItem); 
-            // or do something like existingRow.text = newItem.text; ...
+            // PARTIAL MERGE to keep old data for missing fields
+            const mergedData = {
+              text: newItem.text !== undefined ? newItem.text : existingRow.text,
+              images: newItem.images !== undefined ? newItem.images : existingRow.images,
+              // ... any other columns you want to preserve
+            };
+            console.log('Merged data for existing row =>', mergedData);
+
+            existingRow.set(mergedData);
             await existingRow.save();
-    
-            // Remove from the map so we know we've "handled" it
+            console.log('Updated row =>', existingRow.toJSON());
+
             existingMap.delete(newItem.id);
           } else {
-            // There's an `id` but no matching row in DB => create new
-            // Omit the `id` if you're letting the DB auto-increment, 
-            // or if your front end provides a valid ID that doesn't conflict, keep it.
-            await PastedHistory.create({
-              ...newItem,
-              id: undefined,   // let DB assign a new primary key
-              taskId: task.id
-            });
+            // If an ID was given but no matching row, create new
+            console.log('Creating new row with =>', newItem);
+            await PastedHistory.create({ ...newItem, id: undefined });
           }
         } else {
-          // No `id` => definitely a new record
-          await PastedHistory.create({
-            ...newItem,
-            taskId: task.id
-          });
+          // brand new row
+          console.log('Creating brand new row =>', newItem);
+          await PastedHistory.create(newItem);
         }
       }
+
+      // If you want to remove leftover old rows not in the new array, uncomment:
+      // for (const leftoverId of existingMap.keys()) {
+      //   await existingMap.get(leftoverId).destroy();
+      // }
     }
 
-    const updatedTask = await Task.findByPk(taskId, {
+    // 7) Refetch the fully updated Task with associations
+    const finalTask = await Task.findByPk(taskId, {
       include: [Note, Step, PastedHistory],
     });
 
-    // // 6) Send a response
-    return res.status(200).json({ data: updatedTask.toJSON() });
+    if (!finalTask) {
+      return res.status(404).json({ message: 'Task not found after update' });
+    }
+
+    // 8) Return
+    return res.status(200).json({ data: finalTask.toJSON() });
   } catch (err) {
     console.error('Update task error:', err);
     return next(err); // or res.status(500).json({ error: err.message });
   }
 };
 
-async function getUpdatedTask(taskId) {
-  const updatedTask = await Task.findByPk(taskId, {
-    include: [Note, Step, PastedHistory],
-  });
-  return updatedTask; 
-}
-
 module.exports.getUpdatedTaskById = async (req, res, next) => {
   try {
     const taskId = req.params.id;
-    
+    //console.log(taskId, '<< taskId')
     // 1) Find and update your Task, Note, Steps, PastedHistory as needed
     //    (Same logic as before: parse status, task.set(...), update or create notes, etc.)
     //    ...
-    
+
     // 2) After all updates, get the fresh data
     const updatedTask = await getUpdatedTask(taskId);
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found after update' });
     }
 
-    const plainData = updatedTask.toJSON();          // Convert Sequelize model -> plain object
+    const plainData = updatedTask.toJSON(); // Convert Sequelize model -> plain object
     const sanitizedData = removeTimestamps(plainData);
-    
+    //console.log(sanitizedData, 'sanitizedData')
     // 3) Return it
-    return res.status(200).json({ data: sanitizedData });
+    return res.status(200).send({ sanitizedData });
   } catch (err) {
     console.error('Update task error:', err);
-    return next(err); 
+    return next(err);
   }
 };

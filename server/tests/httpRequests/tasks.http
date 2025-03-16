@@ -74,7 +74,7 @@ Content-Type: application/json
 }
 
 ### 200 {task}
-PUT http://localhost:5000/api/tasks/2
+PUT http://localhost:5000/api/tasks/1
 Content-Type: application/json
 
 {
@@ -85,23 +85,21 @@ Content-Type: application/json
   "dueDate": "2030-11-01T20:00:00-04:00",
   "status": ["Paid"],
   "priority": "Low",
-  "notes": { "critical": "test 111", "general": "test 111", "art": "test 111" },
+  "notes": { "critical": "test 90", "general": "test 90", "art": "test 91" },
   "steps": [
-    { "id":1,"step":"PAYMENT PROCESSED","date":"5/15","by":"TO","notes":"PAYMENT PROCESSED test" },
-    { "id":2,"step":"Order Placed","date":"5/15","by":"TO","notes":"Order Placed test" },
-    { "id":3,"step":"Order Checked","date":"5/15","by":"TO","notes":"Order Checked test" },
-    { "id":4,"step":"Vendor Confirmation Checked","date":"5/15","by":"TO","notes":"Vendor Confirmation Checked test" },
-    { "id":5,"step":"Graphics Sent to Vendor","date":"5/15","by":"TO","notes":"Graphics Sent to Vendor test" },
-    { "id":6,"step":"Vendor Proof Sent to Client","date":"5/15","by":"TO","notes":"Vendor Proof Sent to Client" },
-    { "id":7,"step":"Client Approval Sent to Vendor","date":"5/15","by":"TO","notes":"Client Approval Sent to Vendor" },
-    { "id":8,"step":"Order Shipped","date":"5/15","by":"TO","notes":"Order Shipped test" },
-    { "id":9,"step":"Pictures Sent to Client","date":"5/15","by":"TO","notes":"Pictures Sent to Client" }
-  ],
-    "pastedHistory": [
-    { "text":"some text", "images":"public/test.jpg" },
-    { "text":"another text", "images":"public\\images\\pastedHistory[0].images-1741660551903.png" }
+    { "step":"PAYMENT PROCESSED","date":"5/15","by":"YD","notes":"PAYMENT PROCESSED test" },
+    { "step":"Order Placed","date":"5/15","by":"TO","notes":"Order Placed test" },
+    { "step":"Order Checked","date":"5/15","by":"TO","notes":"Order Checked test" },
+    { "step":"Vendor Confirmation Checked","date":"5/15","by":"TO","notes":"Vendor Confirmation Checked test" },
+    { "step":"Graphics Sent to Vendor","date":"5/15","by":"TO","notes":"Graphics Sent to Vendor test" },
+    { "step":"Vendor Proof Sent to Client","date":"5/15","by":"TO","notes":"Vendor Proof Sent to Client" },
+    { "step":"Client Approval Sent to Vendor","date":"5/15","by":"TO","notes":"Client Approval Sent to Vendor" },
+    { "step":"Order Shipped","date":"5/15","by":"TO","notes":"Order Shipped test" },
+    { "step":"Pictures Sent to Client","date":"5/15","by":"TO","notes":"Pictures Sent to Client" }
   ]
 }
+
+
 
 ### 200 {task}
 GET http://localhost:5000/api/tasks/2
