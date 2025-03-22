@@ -5,7 +5,7 @@ const _ = require('lodash');
  * @param {any} value The data to sanitize.
  * @returns {any} The same data structure without createdAt/updatedAt fields.
  */
-function removeTimestamps(value) {
+module.exports = function removeTimestamps(value) {
   if (Array.isArray(value)) {
     return value.map(removeTimestamps);
   } else if (value instanceof Date) {
@@ -23,4 +23,4 @@ function removeTimestamps(value) {
 }
 
 
-module.exports = { removeTimestamps };
+

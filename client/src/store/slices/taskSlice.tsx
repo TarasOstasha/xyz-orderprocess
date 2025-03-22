@@ -16,6 +16,42 @@ interface Task {
   priority: string;
 }
 
+export interface SanitizedData {
+  id: number;
+  title: string;
+  ship: string;
+  art: string;      // e.g. "2028-11-02T00:00:00.000Z"
+  inHand: string;   // e.g. "2030-11-02T00:00:00.000Z"
+  dueDate: string;  // e.g. "2030-11-02T00:00:00.000Z"
+  status: string[]; // e.g. ["Paid", "Order from Vendor Confirmed"]
+  priority: string; // e.g. "Low"
+
+  Note: {
+    id: number;
+    critical: string;
+    general: string;
+    art: string;
+    taskId: number;
+  };
+
+  Steps: Array<{
+    id: number;
+    step: string;
+    date: string;
+    by: string;
+    notes: string;
+    taskId: number;
+  }>;
+
+  PastedHistories: Array<{
+    id: number;
+    text: string;
+    images: string;   // e.g. "public/test.jpg" or JSON string
+    taskId: number;
+  }>;
+}
+
+
 // export interface UpdatedTask {
 //   taskId: number;         
 //   title: string;         
@@ -287,6 +323,32 @@ export const getTasksThunk = createAsyncThunk<
   }
 );
 
+// task info
+export const getTaskThunkInfo = createAsyncThunk<
+any, // need to update with new task updated
+number, // Success payload type
+{ rejectValue: TaskError }  // Error handling
+>(
+`${TASKS_SLICE_NAME}/getinfo`,
+async (id, thunkAPI) => {
+  try {
+    const response = await API.getTaskInfo(id);
+    //console.log(response.data)
+    return response.data.sanitizedData;  
+  } catch (err: any) {
+    if (err instanceof AxiosError) {
+      return thunkAPI.rejectWithValue({
+        status: err.response?.status || 500,
+        message: err.response?.data?.errors || 'Unknown error',
+      });
+    }
+    return thunkAPI.rejectWithValue({
+      status: 500,
+      message: 'Unexpected error',
+    });
+  }
+}
+);
 
 // remove task
 export const removeTaskThunk = createAsyncThunk<
@@ -405,7 +467,28 @@ const tasksSlice = createSlice({
       .addCase(createTaskThunk.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
         state.isFetching = false;
         state.error = action.payload || { status: 500, message: 'Unknown error' };
-      });
+      })
+
+      .addCase(getTaskThunkInfo.pending, (state) => {
+        state.isFetching = true;
+        state.error = null;
+      })
+      .addCase(getTaskThunkInfo.fulfilled, (state, { payload }) => {
+        state.isFetching = false;
+        //console.log('Fulfilled payload:', payload);
+        const id = state.tasks.findIndex((t) => t.id === payload.id);
+        //console.log(id, 'id')
+        if (id >= 0) {
+          //state.tasks[id] = payload;
+          state.tasks[id] = { ...state.tasks[id], ...payload };
+        } else {
+          state.tasks.push(payload);
+        }
+      })
+      .addCase(getTaskThunkInfo.rejected, (state, action: PayloadAction<TaskError | undefined>) => {
+        state.isFetching = false;
+        state.error = action.payload || { status: 500, message: 'Unknown error' };
+      })
   },
 });
 

@@ -1,5 +1,5 @@
 // OrderStepsTable.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
 import { Box, Typography, Button } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
@@ -19,11 +19,8 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   const rows = stepsByTask[taskId] || [];
 
   // Grab the notes for this task, or default to empty
-  const notesForThisTask = notesByTask[taskId] || {
-    critical: '',
-    general: '',
-    art: '',
-  };
+  const notesForThisTask = notesByTask[taskId] 
+
 
   // Called whenever user edits a row in the DataGrid
   const handleProcessRowUpdate = (newRowModel: GridRowModel) => {

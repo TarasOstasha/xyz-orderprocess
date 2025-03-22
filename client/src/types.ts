@@ -72,6 +72,7 @@ export interface ListProps {
   // Pagination actions
   setCurrentPage: (page: number) => void;
   setItemsPerPage: (limit: number) => void;
+  getTaskInfo: (id: number) => void;
 };
 
 export interface OrderNotes {
