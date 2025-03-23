@@ -85,12 +85,12 @@ const List: React.FC<ListProps> = ({
   */
   useEffect(() => {
     getTasks(currentPage, itemsPerPage);
-    console.log(tasks, 'tasks');
+    //console.log(tasks, 'tasks');
   }, [currentPage, itemsPerPage]);
 
   // Initialize steps data for each new task
   useEffect(() => {
-    console.log(tasks, 'tasks');
+
     setStepsByTask((prev) => {
       const newStepsByTask = { ...prev };
       tasks.forEach((task) => {
@@ -99,6 +99,7 @@ const List: React.FC<ListProps> = ({
           newStepsByTask[taskIdStr] = defaultRows.map((row) => ({ ...row }));
         }
       });
+      console.log(tasks, 'tasks');
       return newStepsByTask;
     });
   }, [tasks]);
@@ -165,8 +166,9 @@ const List: React.FC<ListProps> = ({
   };
 
   // Row click selects a single task
-  const handleRowClick = (task: Task) => {
+  const handleRowClick = async (task: Task) => {
     setSelectedTask((prev) => (prev?.id === task.id ? null : task));
+
   };
 
   // Filter tasks by search (local client filter)
