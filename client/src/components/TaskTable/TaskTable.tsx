@@ -177,6 +177,9 @@ const TaskTable: React.FC<TaskTableProps> = ({
       </Box>
 
       {/* ===== RIGHT-SIDE DETAILS SECTION ===== */}
+      <>
+      {console.log(JSON.stringify(selectedTask), 'selectedTask')}
+      </>
       {selectedTask && (
         <>
           {/* A "Save Task" button */}

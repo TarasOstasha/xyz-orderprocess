@@ -17,7 +17,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
 }) => {
   // Grab rows for this task
   const rows = stepsByTask[taskId] || [];
-
+  console.log(notesByTask, 'notesByTask');
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
     critical: '',

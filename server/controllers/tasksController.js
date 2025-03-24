@@ -1,6 +1,5 @@
 
 const _ = require('lodash');
-const { removeTimestamps } = require('../utils/removeTimestamps');
 //const { getUpdatedTask, rebuildPastedHistory } = require('../utils/helpers');
 const { getUpdatedTask, rebuildPastedHistory, removeTimestamps } = require('../utils');
 const createHttpError = require('http-errors');
@@ -185,26 +184,51 @@ exports.createTask = async (req, res, next) => {
   }
 };
 
-exports.getTasks = async (req, res, next) => {
-  try {
-    const { limit, offset } = req.pagination;
+// exports.getTasks = async (req, res, next) => {
+//   try {
+//     const { limit, offset } = req.pagination;
 
-    const { rows: foundTasks, count } = await Task.findAndCountAll({
-      raw: true,
-      attributes: { exclude: ['createdAt', 'updatedAt'] },
+//     const { rows: foundTasks, count } = await Task.findAndCountAll({
+//       raw: true,
+//       attributes: { exclude: ['createdAt', 'updatedAt'] },
+//       limit,
+//       offset,
+//       order: ['id'],
+//     });
+
+//     const totalPages = Math.ceil(count / limit);
+//     const currentPage = offset / limit + 1;
+
+//     return res.status(200).send({
+//       tasks: foundTasks,
+//       totalPages,
+//       currentPage,
+//       totalItems: count,
+//     });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+module.exports.getTasks = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const { rows, count } = await Task.findAndCountAll({
       limit,
       offset,
-      order: ['id'],
+      order: [['id', 'ASC']],
+      include: [Note, Step, PastedHistory]
     });
 
     const totalPages = Math.ceil(count / limit);
-    const currentPage = offset / limit + 1;
 
-    return res.status(200).send({
-      tasks: foundTasks,
+    return res.status(200).json({
+      tasks: rows,         
       totalPages,
-      currentPage,
-      totalItems: count,
+      currentPage: page,
     });
   } catch (err) {
     next(err);
