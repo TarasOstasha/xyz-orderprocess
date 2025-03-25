@@ -326,6 +326,7 @@ module.exports.updateTaskById = async (req, res, next) => {
     if (req.body.notes !== undefined) {
       // If notes is not in req.body, we skip => old notes remain
       const existingNote = await Note.findOne({ where: { taskId } });
+      console.log(existingNote, 'existingNote')
       if (!existingNote) {
         // If none found, create
         await Note.create({
