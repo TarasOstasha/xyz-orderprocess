@@ -1,4 +1,5 @@
 import axios from 'axios';
+import _ from 'lodash';
 import { SavePayload } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -59,7 +60,8 @@ export const updateTask = (payload: SavePayload) => {
 
   // -- Append object fields as JSON
   formData.append('notes', JSON.stringify(payload.notes));
-  formData.append('steps', JSON.stringify(payload.steps));
+  const sanitizedSteps = payload.steps.map(step => _.omit(step, 'id'));
+  formData.append('steps', JSON.stringify(sanitizedSteps));
 
   // -- Append pastedHistory items (text + files)
   payload.pastedHistory.forEach((item, index) => {

@@ -17,7 +17,9 @@ const createInitialData = (count: number): StepsByTask => {
 };
 
 
-const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
+//const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
+const OrderStepsTable: React.FC<any> = ({
+
   taskId,
   stepsByTask,
   setStepsByTask,
