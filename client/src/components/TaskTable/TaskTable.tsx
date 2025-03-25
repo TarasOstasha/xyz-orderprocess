@@ -177,9 +177,6 @@ const TaskTable: React.FC<TaskTableProps> = ({
       </Box>
 
       {/* ===== RIGHT-SIDE DETAILS SECTION ===== */}
-      <>
-      {console.log(JSON.stringify(selectedTask), 'selectedTask')}
-      </>
       {selectedTask && (
         <>
           {/* A "Save Task" button */}
@@ -353,8 +350,7 @@ const TaskTable: React.FC<TaskTableProps> = ({
                 ))}
               </Box>
             </Box>
-          </Box>
-
+          </Box>   
           {/* ORDER STEPS + NOTES */}
           <OrderStepsTable
             taskId={selectedTask.id.toString()}
@@ -362,6 +358,7 @@ const TaskTable: React.FC<TaskTableProps> = ({
             setStepsByTask={setStepsByTask}
             notesByTask={notesByTask}
             setNotesByTask={setNotesByTask}
+            selectedTask={selectedTask}
           />
           <OrderNotesPastedData
             selectedTask={selectedTask}

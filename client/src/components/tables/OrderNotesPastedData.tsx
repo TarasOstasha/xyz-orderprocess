@@ -15,7 +15,7 @@ const OrderNotesPastedData: React.FC<OrderNotesPastedDataProps> = ({
   // For each taskId, we store the current text and images in local state
   const [pastedData, setPastedData] = useState<{ [taskId: number]: string }>({});
   const [pastedImages, setPastedImages] = useState<{ [taskId: number]: string[] }>({});
-
+  // console.log(JSON.stringify(selectedTask), 'selectedTask')
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     if (!selectedTask) return;

@@ -13,16 +13,18 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   stepsByTask,
   setStepsByTask,
   notesByTask,
-  setNotesByTask
+  setNotesByTask,
+  selectedTask
 }) => {
+  console.log('selectedTask =>', selectedTask);
   // Grab rows for this task
   const rows = stepsByTask[taskId] || [];
-  console.log(notesByTask, 'notesByTask');
+  console.log(taskId, 'notesByTask');
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
-    critical: '',
-    general: '',
-    art: '',
+    critical: selectedTask?.Note.critical || '',
+    general: selectedTask?.Note.general || '',
+    art: selectedTask?.Note.art || '',
   };
 
   // Called whenever user edits a row in the DataGrid
@@ -42,13 +44,14 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   return (
     <Box sx={{ width: '100%', marginTop: 2, position: 'relative' }}>
       {/* Top table for notes */}
+      <>{console.log(selectedTask, 'selectedTask')}</>
       <TopNotesTable
         taskId={taskId}
         notes={notesForThisTask}
         // Wrap setNotesByTask so it updates only notes for *this* task
         setNotes={(updater) => {
           setNotesByTask((prev) => {
-            const oldNotes = prev[taskId] || { critical: '', general: '', art: '' };
+            const oldNotes = prev[taskId] || { critical: selectedTask.Note.critical || '', general: selectedTask.Note.general || '', art: selectedTask.Note.art || '' };
             const newNotes = typeof updater === 'function' ? updater(oldNotes) : updater;
             return {
               ...prev,

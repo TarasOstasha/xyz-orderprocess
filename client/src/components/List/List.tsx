@@ -158,7 +158,7 @@ const List: React.FC<ListProps> = ({
 
   // Row click selects a single task
   const handleRowClick = (task: Task) => {
-    console.log(task, 'tasks in row click')
+    //console.log(task, 'tasks in row click')
     setSelectedTask((prev) => (prev?.id === task.id ? null : task));
   };
 
@@ -245,6 +245,7 @@ const List: React.FC<ListProps> = ({
 
     setIsEditing(false);
   };
+
   const handleCancelTop = () => {
     setIsEditing(false);
   };

@@ -25,7 +25,7 @@ interface TopNotesTableProps {
   }
 
 const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }) => {
-  console.log(JSON.stringify(notes), 'notes')
+  console.log(notes.critical, 'notes')
   const handleCriticalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value);
     setNotes((prev) => ({ ...prev, critical: e.target.value }));
