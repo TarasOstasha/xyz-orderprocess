@@ -3,9 +3,18 @@ import React from 'react';
 import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
 import { Box, Typography, Button } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
-import { StepRow, OrderStepsTableProps } from '../../types';
-import { columns } from '../../constants';
+import { StepRow, OrderStepsTableProps, StepsByTask } from '../../types';
+import { columns, defaultRows } from '../../constants';
 
+
+// Initialize steps for each task ID
+const createInitialData = (count: number): StepsByTask => {
+  const result: StepsByTask = {};
+  for (let i = 1; i <= count; i++) {
+    result[i.toString()] = defaultRows.map((row) => ({ ...row }));
+  }
+  return result;
+};
 
 
 const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
@@ -14,7 +23,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   setStepsByTask,
   notesByTask,
   setNotesByTask,
-  selectedTask
+  selectedTask,
 }) => {
   console.log('selectedTask =>', selectedTask);
   // Grab rows for this task
@@ -22,9 +31,9 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   console.log(taskId, 'notesByTask');
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
-    critical: selectedTask?.Note.critical || '',
-    general: selectedTask?.Note.general || '',
-    art: selectedTask?.Note.art || '',
+    critical: selectedTask?.Note?.critical || '',
+    general: selectedTask?.Note?.general || '',
+    art: selectedTask?.Note?.art || '',
   };
 
   // Called whenever user edits a row in the DataGrid
@@ -40,7 +49,6 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     return updatedRow;
   };
 
-
   return (
     <Box sx={{ width: '100%', marginTop: 2, position: 'relative' }}>
       {/* Top table for notes */}
@@ -51,7 +59,11 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
         // Wrap setNotesByTask so it updates only notes for *this* task
         setNotes={(updater) => {
           setNotesByTask((prev) => {
-            const oldNotes = prev[taskId] || { critical: selectedTask.Note.critical || '', general: selectedTask.Note.general || '', art: selectedTask.Note.art || '' };
+            const oldNotes = prev[taskId] || {
+              critical: selectedTask?.Note.critical || '',
+              general: selectedTask?.Note.general || '',
+              art: selectedTask?.Note.art || '',
+            };
             const newNotes = typeof updater === 'function' ? updater(oldNotes) : updater;
             return {
               ...prev,
