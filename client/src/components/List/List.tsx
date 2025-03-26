@@ -24,7 +24,13 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { connect } from 'react-redux';
-import { ListProps, Task, TaskStatus, PastedEntry, SavePayload, UpdatedTask } from '../../types';
+import {
+  ListProps,
+  Task,
+  TaskStatus,
+  PastedEntry,
+  SavePayload,
+} from '../../types';
 import { statusColors } from '../../utils/colors';
 import {
   getTasksThunk,
@@ -62,35 +68,35 @@ const List: React.FC<ListProps> = ({
   setCurrentPage,
   setItemsPerPage,
 }) => {
-  const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
+  // 1) Local copy of tasks so we can do immediate UI changes
+  const [clientTasks, setClientTasks] = useState<Task[]>([]);
+  
+  // 2) The selected task from local array
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Steps and Notes dictionaries
-  const [stepsByTask, setStepsByTask] = useState<StepsByTask>(createInitialData(tasks.length));
+  // Steps/Notes/Pasted local dictionaries
+  const [stepsByTask, setStepsByTask] = useState<StepsByTask>(
+    createInitialData(tasks.length)
+  );
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
 
-  // Open/close the Add Task dialog
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const [isEditing, setIsEditing] = useState(false);
-
-  /* 
-    ========== SERVER-SIDE PAGINATION ==========
-    We rely on the back end to return tasks for (currentPage, itemsPerPage).
-    Whenever these values change, fetch new data.
-  */
+  // ========== SERVER-SIDE PAGINATION ==========
   useEffect(() => {
     getTasks(currentPage, itemsPerPage);
-    //console.log(tasks, 'tasks');
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, getTasks]);
+
+  // 3) Whenever Redux tasks changes, copy them into clientTasks
+  useEffect(() => {
+    setClientTasks(tasks);
+  }, [tasks]);
 
   // Initialize steps data for each new task
   useEffect(() => {
-
     setStepsByTask((prev) => {
       const newStepsByTask = { ...prev };
       tasks.forEach((task) => {
@@ -99,19 +105,16 @@ const List: React.FC<ListProps> = ({
           newStepsByTask[taskIdStr] = defaultRows.map((row) => ({ ...row }));
         }
       });
-      console.log(tasks, 'tasks');
       return newStepsByTask;
     });
   }, [tasks]);
 
-  const toggleEditMode = () => {
-    setIsEditing((prev) => !prev);
-  };
+  // Open/close the Add Task dialog
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
   // Submit new task
   const handleSubmit = (values: Task, formikBag: any) => {
-    console.log('first');
-    console.log(values, 'values');
     try {
       addTask(values);
     } catch (error) {
@@ -136,7 +139,7 @@ const List: React.FC<ListProps> = ({
     setSelectedTasks([]);
   };
 
-  // transform date
+  // Format date
   const formatDateString = (dateString?: string): string => {
     if (!dateString) return '';
     const date = parseISO(dateString);
@@ -148,31 +151,27 @@ const List: React.FC<ListProps> = ({
 
   // Bulk mark “Completed”
   const handleSuccessSelected = () => {
-    selectedTasks.forEach((taskId) => {
-      const task = tasks.find((t) => t.id === taskId);
-      if (!task) return;
-
-      const updatedStatus = task.status.includes('Completed')
-        ? task.status
-        : [...task.status, 'Completed'];
-
-      const updatedTask: Task = {
-        ...task,
-        status: updatedStatus as TaskStatus[],
-      };
-      updateTask(updatedTask);
-      setSelectedTask(updatedTask);
-    });
+    setClientTasks((prev) =>
+      prev.map((t) => {
+        if (selectedTasks.includes(t.id)) {
+          // Add "Completed" if not present
+          if (!t.status.includes('Completed')) {
+            return { ...t, status: [...t.status, 'Completed'] };
+          }
+        }
+        return t;
+      })
+    );
+    // Optionally do an immediate server update, or wait for user to "Save Task"
   };
 
-  // Row click selects a single task
-  const handleRowClick = async (task: Task) => {
-    setSelectedTask((prev) => (prev?.id === task.id ? null : task));
-
+  // Row click selects a single task from local array
+  const handleRowClick = (clickedTask: Task) => {
+    setSelectedTask((prev) => (prev?.id === clickedTask.id ? null : clickedTask));
   };
 
-  // Filter tasks by search (local client filter)
-  const filteredTasks = tasks.filter((task) =>
+  // 4) Filter tasks by search in local array
+  const filteredTasks = clientTasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -183,26 +182,47 @@ const List: React.FC<ListProps> = ({
 
   // =========== TWO-BOX STATUS LOGIC ===========
   const selectedStatuses = selectedTask?.status || [];
-  const unselectedStatuses = ALL_STATUSES.filter((s) => !selectedStatuses.includes(s));
+  const unselectedStatuses = ALL_STATUSES.filter(
+    (s) => !selectedStatuses.includes(s)
+  );
 
+  // 5) Add/Remove status only in local data => immediate line-through
   const handleAddStatus = (status: TaskStatus) => {
     if (!selectedTask) return;
+    // Update the selectedTask in local state
     const newStatuses = [...selectedTask.status, status];
-    const updatedTask: Task = { ...selectedTask, status: newStatuses };
-    setSelectedTask(updatedTask);
-    updateTask(updatedTask);
+    const updatedSelected = { ...selectedTask, status: newStatuses };
+    setSelectedTask(updatedSelected);
+
+    // Also update the local tasks array so the table sees the new status
+    setClientTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === selectedTask.id) {
+          return { ...t, status: newStatuses };
+        }
+        return t;
+      })
+    );
   };
 
   const handleRemoveStatus = (status: TaskStatus) => {
     if (!selectedTask) return;
     const newStatuses = selectedTask.status.filter((s) => s !== status);
-    const updatedTask: Task = { ...selectedTask, status: newStatuses };
-    setSelectedTask(updatedTask);
-    updateTask(updatedTask);
+    const updatedSelected = { ...selectedTask, status: newStatuses };
+    setSelectedTask(updatedSelected);
+
+    setClientTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === selectedTask.id) {
+          return { ...t, status: newStatuses };
+        }
+        return t;
+      })
+    );
   };
 
+  // Pasted data
   const handleSavePastedData = (taskId: number, text: string, images: string[]) => {
-    console.log('Parent got new pasted data:', { taskId, text, images });
     // Append a new entry to the array
     setPastedByTask((prev) => {
       const oldEntries = prev[taskId] || [];
@@ -213,11 +233,9 @@ const List: React.FC<ListProps> = ({
     });
   };
 
-
-
+  // "Save Task" => merges local changes into a final payload, then calls updateTask
   const handleSaveAllData = () => {
     if (!selectedTask) return;
-    console.log(selectedTask, 'selectedTask');
     const taskId = selectedTask.id;
     const notes = notesByTask[taskId] || {
       critical: '',
@@ -229,6 +247,7 @@ const List: React.FC<ListProps> = ({
     const steps = stepsByTask[taskId] || [];
     const pastedHistory = pastedByTask[taskId] || [];
 
+    // The final object to send to server
     const payload: SavePayload = {
       id: selectedTask.id,
       title: selectedTask.title,
@@ -242,20 +261,30 @@ const List: React.FC<ListProps> = ({
       pastedHistory,
       priority: selectedTask.priority,
     };
-    updateTask(payload)
-    //console.log('Sending to backend =>', payload);
+
+    updateTask(payload);
   };
 
   const handleFieldChange = (field: keyof Task, newValue: string) => {
     if (!selectedTask) return;
+    // Update the selectedTask
     setSelectedTask((prev) => prev && { ...prev, [field]: newValue });
+
+    // Also update local tasks array
+    if (selectedTask) {
+      setClientTasks((prev) =>
+        prev.map((t) =>
+          t.id === selectedTask.id ? { ...t, [field]: newValue } : t
+        )
+      );
+    }
   };
 
   const handleSaveTop = () => {
     handleSaveAllData();
-  
     setIsEditing(false);
   };
+
   const handleCancelTop = () => {
     setIsEditing(false);
   };
@@ -307,7 +336,7 @@ const List: React.FC<ListProps> = ({
       </Dialog>
 
       {/* BULK ACTIONS */}
-      {tasks.length > 0 && selectedTasks.length > 0 && (
+      {clientTasks.length > 0 && selectedTasks.length > 0 && (
         <Box display="flex" justifyContent="center" gap={3}>
           <Button variant="contained" color="error" onClick={handleDeleteSelected}>
             Delete Selected ({selectedTasks.length})
@@ -329,10 +358,12 @@ const List: React.FC<ListProps> = ({
                   <TableRow>
                     <TableCell>
                       <Checkbox
-                        checked={selectedTasks.length === tasks.length && tasks.length > 0}
+                        checked={selectedTasks.length === clientTasks.length && clientTasks.length > 0}
                         onChange={() =>
                           setSelectedTasks(
-                            selectedTasks.length === tasks.length ? [] : tasks.map((t) => t.id)
+                            selectedTasks.length === clientTasks.length
+                              ? []
+                              : clientTasks.map((t) => t.id)
                           )
                         }
                       />
@@ -346,52 +377,51 @@ const List: React.FC<ListProps> = ({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredTasks.map((task, index) => {
-                    //console.log('Task in map:', task);
-
-                    return (
-                      <TableRow
-                        key={task.id ?? index}
-                        onClick={() => handleRowClick(task)}
-                        sx={{
-                          cursor: 'pointer',
-                          backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
-                          textDecoration: task.status.includes('Completed')
-                            ? 'line-through'
-                            : 'none',
-                        }}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedTasks.includes(task.id)}
-                            onChange={() => handleCheckboxChange(task.id)}
-                          />
-                        </TableCell>
-                        <TableCell>{task.title}</TableCell>
-                        <TableCell>{formatDateString(task.ship)}</TableCell>
-                        <TableCell>{formatDateString(task.art)}</TableCell>
-                        <TableCell>{formatDateString(task.inHand)}</TableCell>
-                        <TableCell>{formatDateString(task.dueDate)}</TableCell>
-                        <TableCell>
-                          <Box display="flex" gap={1}>
-                            {task.status.map((status) => (
-                              <Box key={status} display="flex" alignItems="center" gap={1}>
-                                <Box
-                                  sx={{
-                                    width: 12,
-                                    height: 12,
-                                    borderRadius: '3px',
-                                    backgroundColor: statusColors[status],
-                                  }}
-                                />
-                                <Typography variant="body2">{status}</Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {filteredTasks.map((task, index) => (
+                    <TableRow
+                      key={task.id ?? index}
+                      onClick={() => handleRowClick(task)}
+                      sx={{
+                        cursor: 'pointer',
+                        backgroundColor: selectedTask?.id === task.id ? '#f0f0f0' : 'transparent',
+                        textDecoration: task.status.includes('Completed')
+                          ? 'line-through'
+                          : 'none',
+                      }}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTasks.includes(task.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleCheckboxChange(task.id);
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{task.title}</TableCell>
+                      <TableCell>{formatDateString(task.ship)}</TableCell>
+                      <TableCell>{formatDateString(task.art)}</TableCell>
+                      <TableCell>{formatDateString(task.inHand)}</TableCell>
+                      <TableCell>{formatDateString(task.dueDate)}</TableCell>
+                      <TableCell>
+                        <Box display="flex" gap={1}>
+                          {task.status.map((st) => (
+                            <Box key={st} display="flex" alignItems="center" gap={1}>
+                              <Box
+                                sx={{
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: '3px',
+                                  backgroundColor: statusColors[st],
+                                }}
+                              />
+                              <Typography variant="body2">{st}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -431,7 +461,7 @@ const List: React.FC<ListProps> = ({
                         Due Date: {formatDateString(selectedTask.dueDate)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Priority: {formatDateString(selectedTask.priority)}
+                        Priority: {selectedTask.priority}
                       </Typography>
                     </>
                   )}
@@ -532,7 +562,9 @@ const List: React.FC<ListProps> = ({
                     {(() => {
                       const totalStatuses = ALL_STATUSES.length;
                       const doneStatuses = selectedStatuses.length;
-                      const progressPercent = Math.round((doneStatuses / totalStatuses) * 100);
+                      const progressPercent = Math.round(
+                        (doneStatuses / totalStatuses) * 100
+                      );
 
                       return (
                         <Box sx={{ width: '100%', mt: 1, mb: 2 }}>
@@ -583,10 +615,8 @@ const List: React.FC<ListProps> = ({
                 />
                 {selectedTask && pastedByTask[selectedTask.id] && (
                   <Box mt={2}>
-                    {/* <Typography variant="h6">Pasted Data History</Typography> */}
                     {pastedByTask[selectedTask.id].map((entry, idx) => (
                       <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #ddd' }}>
-                        {/* <Typography variant="subtitle1">Entry #{idx + 1}</Typography> */}
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#333' }}>
                           {entry.text}
                         </Typography>
@@ -624,9 +654,7 @@ const List: React.FC<ListProps> = ({
             <Select
               value={itemsPerPage}
               onChange={(e) => {
-                // 1) Set the new itemsPerPage in Redux
                 setItemsPerPage(Number(e.target.value));
-                // 2) Optionally reset current page to 1 in the slice
               }}
               label="Items Per Page"
             >
@@ -642,7 +670,6 @@ const List: React.FC<ListProps> = ({
             count={totalPages}
             page={currentPage}
             onChange={(event, value) => {
-              // 1) Set the new currentPage in Redux
               setCurrentPage(value);
             }}
             color="primary"

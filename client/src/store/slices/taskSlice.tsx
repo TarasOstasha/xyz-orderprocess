@@ -321,7 +321,7 @@ export const updateTaskThunk = createAsyncThunk<
   { rejectValue: TaskError }
 >('tasks/update', async (updatedTask, thunkAPI) => {
   try {
-    console.log(updatedTask, 'updatedTask slice')
+    //console.log(updatedTask, 'updatedTask slice')
     const response = await API.updateTask(updatedTask); // Ensure your API supports this
     console.log(response, 'response')
     return response.data; // Assuming your API returns the updated task
