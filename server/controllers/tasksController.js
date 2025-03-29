@@ -1,6 +1,6 @@
 // const { Task, User } = require('../db/models');
 const _ = require('lodash');
-const {  getUpdatedTask, rebuildPastedHistory, removeTimestamps } = require('../utils');
+const { getUpdatedTask, rebuildPastedHistory, removeTimestamps } = require('../utils');
 
 const createHttpError = require('http-errors');
 // const { Task, Notes, Steps, PastedHistory, sequelize  } = require('./../models');
@@ -220,13 +220,12 @@ module.exports.getTasks = async (req, res, next) => {
       limit,
       offset,
       order: [['id', 'ASC']],
-      include: [Note, Step, PastedHistory]
+      include: [Note, Step, PastedHistory],
     });
 
     const totalPages = Math.ceil(count / limit);
-
     return res.status(200).json({
-      tasks: rows,         
+      tasks: rows,
       totalPages,
       currentPage: page,
     });
@@ -252,7 +251,7 @@ module.exports.deleteTaskById = async (req, res, next) => {
 };
 
 module.exports.updateTaskById = async (req, res, next) => {
-  console.log('updateTaskById works!')
+  console.log('updateTaskById works!');
   try {
     const taskId = req.params.id;
 
@@ -300,7 +299,7 @@ module.exports.updateTaskById = async (req, res, next) => {
     // 2) PARTIAL UPDATE: Only update Task columns that are present
     //    in req.body (so any missing field => keep old data)
     // ─────────────────────────────────────────────────────────
-    const updatableFields = ['title','ship','art','inHand','dueDate','status','priority'];
+    const updatableFields = ['title', 'ship', 'art', 'inHand', 'dueDate', 'status', 'priority'];
     const taskFields = {};
     for (const field of updatableFields) {
       if (req.body[field] !== undefined) {
@@ -326,7 +325,7 @@ module.exports.updateTaskById = async (req, res, next) => {
     if (req.body.notes !== undefined) {
       // If notes is not in req.body, we skip => old notes remain
       const existingNote = await Note.findOne({ where: { taskId } });
-      console.log(existingNote, 'existingNote')
+      console.log(existingNote, 'existingNote');
       if (!existingNote) {
         // If none found, create
         await Note.create({
@@ -364,7 +363,7 @@ module.exports.updateTaskById = async (req, res, next) => {
       // Load existing
       const existingPH = await PastedHistory.findAll({ where: { taskId } });
       // Put in a Map keyed by ID
-      const existingMap = new Map(existingPH.map(ph => [ph.id, ph]));
+      const existingMap = new Map(existingPH.map((ph) => [ph.id, ph]));
 
       for (const newItem of req.body.pastedHistory) {
         newItem.taskId = taskId; // ensure correct foreign key
@@ -375,7 +374,7 @@ module.exports.updateTaskById = async (req, res, next) => {
           if (existingRow) {
             // MERGE old data for any fields not sent
             const mergedData = {
-              text:   newItem.text   !== undefined ? newItem.text   : existingRow.text,
+              text: newItem.text !== undefined ? newItem.text : existingRow.text,
               images: newItem.images !== undefined ? newItem.images : existingRow.images,
               // add more columns as needed
             };
@@ -412,7 +411,6 @@ module.exports.updateTaskById = async (req, res, next) => {
     // 7) Return fresh data to the front end
     // ─────────────────────────────────────────────────────────
     return res.status(200).json({ data: finalTask.toJSON() });
-
   } catch (err) {
     console.error('Update task error:', err);
     return next(err); // or res.status(500).json({ error: err.message });
@@ -437,5 +435,3 @@ module.exports.getUpdatedTaskById = async (req, res, next) => {
     return next(err);
   }
 };
-
-

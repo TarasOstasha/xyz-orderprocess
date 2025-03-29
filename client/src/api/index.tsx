@@ -35,13 +35,14 @@ function dataURLtoFile(dataURL: string, filename: string): File {
   return new File([u8arr], filename, { type: mime });
 }
 
-export const getTasks = (page: number, limit: number) => axiosInstance.get(`/tasks?page=${page}&limit=${limit}`);
+export const getTasks = (page: number, limit: number) =>
+  axiosInstance.get(`/tasks?page=${page}&limit=${limit}`);
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
 
 // export const updateTask = ( task: SavePayload) => axiosInstance.put(`/tasks/${task.id}`, task);
 export const updateTask = (payload: SavePayload) => {
-  console.log(payload,'payload')
+  console.log(payload, 'payload');
   // 1) Build FormData
   const formData = new FormData();
 
@@ -60,21 +61,18 @@ export const updateTask = (payload: SavePayload) => {
 
   // -- Append object fields as JSON
   formData.append('notes', JSON.stringify(payload.notes));
-  const sanitizedSteps = payload.steps.map(step => _.omit(step, 'id'));
+  const sanitizedSteps = payload.steps.map((step) => _.omit(step, 'id'));
   formData.append('steps', JSON.stringify(sanitizedSteps));
 
   // -- Append pastedHistory items (text + files)
   payload.pastedHistory.forEach((item, index) => {
     formData.append(`pastedHistory[${index}].text`, item.text || '');
-  
+
     if (item.images && item.images.length) {
       item.images.forEach((base64Str, imgIndex) => {
         // Convert the base64 string into a real File
-        const file = dataURLtoFile(
-          base64Str,
-          `pastedHistory-${index}-img-${imgIndex}.png`
-        );
-       // console.log(file, 'file')
+        const file = dataURLtoFile(base64Str, `pastedHistory-${index}-img-${imgIndex}.png`);
+        // console.log(file, 'file')
         formData.append(`pastedHistory[${index}].images`, file);
       });
     }
