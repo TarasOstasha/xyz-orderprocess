@@ -132,11 +132,13 @@ export interface PastedImagesByTask {
 };
 
 export interface OrderStepsTableProps {
-  taskId: string;
+  taskId: number;
   stepsByTask: StepsByTask;
   setStepsByTask: React.Dispatch<React.SetStateAction<StepsByTask>>;
   notesByTask: NotesByTask;
   setNotesByTask: React.Dispatch<React.SetStateAction<NotesByTask>>;
+  filteredTasks: Task[];
+  selectedTask: Task | null;
 }
 
 export interface TaskError {

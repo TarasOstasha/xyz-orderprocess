@@ -78,17 +78,18 @@ const List: React.FC<ListProps> = ({
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  
+
   // Steps/Notes/Pasted local dictionaries
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(
     createInitialData(tasks.length)
   );
-  const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
+  const [notesByTask, setNotesByTask] = useState<{ [taskId: number]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
 
   // ========== SERVER-SIDE PAGINATION ==========
   useEffect(() => {
     getTasks(currentPage, itemsPerPage);
-    console.log(totalPages, 'totalPages');
   }, [currentPage, itemsPerPage, getTasks]);
 
   // 3) Whenever Redux tasks changes, copy them into clientTasks
@@ -169,6 +170,7 @@ const List: React.FC<ListProps> = ({
   // Row click selects a single task from local array
   const handleRowClick = (clickedTask: Task) => {
     setSelectedTask((prev) => (prev?.id === clickedTask.id ? null : clickedTask));
+    console.log(clickedTask, 'clickedTask');
   };
 
   // 4) Filter tasks by search in local array
@@ -416,7 +418,7 @@ const List: React.FC<ListProps> = ({
                                   backgroundColor: statusColors[st],
                                 }}
                               />
-                              <Typography variant="body2">{st}</Typography>
+                              {/* <Typography variant="body2">{st}</Typography> */}
                             </Box>
                           ))}
                         </Box>
@@ -604,7 +606,9 @@ const List: React.FC<ListProps> = ({
 
                 {/* Order Steps + Notes */}
                 <OrderStepsTable
-                  taskId={selectedTask.id.toString()}
+                  taskId={selectedTask.id}
+                  filteredTasks={filteredTasks}
+                  selectedTask={selectedTask}
                   stepsByTask={stepsByTask}
                   setStepsByTask={setStepsByTask}
                   notesByTask={notesByTask}

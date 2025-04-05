@@ -1,5 +1,5 @@
 // OrderStepsTable.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
 import { Box, Typography, Button } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
@@ -13,7 +13,8 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   stepsByTask,
   setStepsByTask,
   notesByTask,
-  setNotesByTask
+  setNotesByTask,
+  selectedTask
 }) => {
   // Grab rows for this task
   const rows = stepsByTask[taskId] || [];
@@ -24,6 +25,12 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     general: '',
     art: '',
   };
+
+  useEffect(() => { 
+    // If the selected task changes, update the steps and notes for that task
+    console.log(JSON.stringify(notesForThisTask), 'notesForThisTask')
+    console.log(selectedTask, 'selectedTask')
+  }, [selectedTask]);
 
   // Called whenever user edits a row in the DataGrid
   const handleProcessRowUpdate = (newRowModel: GridRowModel) => {
@@ -37,6 +44,26 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     });
     return updatedRow;
   };
+
+  useEffect(() => {
+    if (!selectedTask) return;
+  
+    setNotesByTask((prev) => {
+      // If we already initialized this task’s notes, do nothing
+      if (prev[selectedTask.id]) return prev;
+  
+      // Otherwise pull them straight from selectedTask.Note
+      const serverNotes = selectedTask.Note || {};
+      return {
+        ...prev,
+        [selectedTask.id]: {
+          critical: serverNotes.critical || '',
+          general:  serverNotes.general  || '',
+          art:      serverNotes.art      || '',
+        },
+      };
+    });
+  }, [selectedTask]);
 
 
   return (
@@ -61,11 +88,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
       <Typography variant="h6" gutterBottom>
         Order Steps
       </Typography>
-      {/* <Box sx={{ width: '100%', mt: 2, mb: 2, position: 'absolute', bottom: '0' }}>
-        <Button variant="contained" color="success" fullWidth onClick={handleSaveTask}>
-          Save Task
-        </Button>
-      </Box> */}
+
       <Box sx={{ height: 700 }}>
         <DataGrid
           rows={rows}

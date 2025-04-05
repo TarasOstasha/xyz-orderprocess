@@ -19,12 +19,13 @@ export interface OrderNotes {
 }
 
 interface TopNotesTableProps {
-    taskId: string;
+    taskId: number;
     notes: OrderNotes;
     setNotes: React.Dispatch<React.SetStateAction<OrderNotes>>;
   }
 
 const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }) => {
+  console.log(JSON.stringify(notes), 'notes');
   const handleCriticalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value);
     setNotes((prev) => ({ ...prev, critical: e.target.value }));
