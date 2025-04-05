@@ -88,6 +88,7 @@ const List: React.FC<ListProps> = ({
   // ========== SERVER-SIDE PAGINATION ==========
   useEffect(() => {
     getTasks(currentPage, itemsPerPage);
+    console.log(totalPages, 'totalPages');
   }, [currentPage, itemsPerPage, getTasks]);
 
   // 3) Whenever Redux tasks changes, copy them into clientTasks

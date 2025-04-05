@@ -355,6 +355,7 @@ const tasksSlice = createSlice({
         state.error = null;
       })
       .addCase(getTasksThunk.fulfilled, (state, { payload }) => {
+        console.log(payload, 'payload')
         state.isFetching = false;
         state.tasks = payload.tasks;
         state.totalPages = payload.totalPages;

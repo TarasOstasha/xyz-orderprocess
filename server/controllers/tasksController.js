@@ -216,11 +216,18 @@ module.exports.getTasks = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
+    const { rows: foundTasks, count: countTask } = await Task.findAndCountAll({
+      limit,
+      offset,
+      order: [['id']],
+    });
+
     const { rows, count } = await Task.findAndCountAll({
       limit,
       offset,
       order: [['id', 'ASC']],
-      include: [Note, Step, PastedHistory]
+      include: [Note, Step, PastedHistory],
+      distinct: true 
     });
 
     const totalPages = Math.ceil(count / limit);
