@@ -18,9 +18,15 @@ export interface Task {
   ship: string;
   art: string;
   inHand: string;
-  status: TaskStatus[]; // ✅ Change from string to an array
+  status: TaskStatus[]; 
   dueDate: string;
   priority: "High" | "Medium" | "Low";
+  Note?: {
+    critical?: string;
+    general?: string;
+    art?: string;
+  };
+  Steps?: StepRow[];
 };
 
 export interface UpdatedTask {

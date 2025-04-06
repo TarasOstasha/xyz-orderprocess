@@ -65,6 +65,14 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     });
   }, [selectedTask]);
 
+  useEffect(() => {
+    if (!selectedTask || selectedTask.Steps?.length === 0) return;
+    setStepsByTask((prev) => ({
+      ...prev,
+      [selectedTask.id]: selectedTask.Steps || []
+    }));
+  }, [selectedTask]);
+
 
   return (
     <Box sx={{ width: '100%', marginTop: 2, position: 'relative' }}>

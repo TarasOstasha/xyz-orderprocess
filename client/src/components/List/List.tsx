@@ -30,6 +30,7 @@ import {
   TaskStatus,
   PastedEntry,
   SavePayload,
+  StepRow,
 } from '../../types';
 import { statusColors } from '../../utils/colors';
 import {
@@ -51,10 +52,18 @@ import { ALL_STATUSES, defaultRows, initialValues } from '../../constants';
 const createInitialData = (count: number): StepsByTask => {
   const result: StepsByTask = {};
   for (let i = 1; i <= count; i++) {
-    result[i.toString()] = defaultRows.map((row) => ({ ...row }));
+    result[i] = defaultRows.map((row) => ({ ...row }));
   }
   return result;
 };
+
+// const createInitialData = (count: number): Record<number, StepRow[]> => {
+//   const result: Record<number, StepRow[]> = {};
+//   for (let i = 1; i <= count; i++) {
+//     result[i] = defaultRows.map((row) => ({ ...row }));
+//   }
+//   return result;
+// };
 
 const List: React.FC<ListProps> = ({
   tasks,
@@ -84,6 +93,7 @@ const List: React.FC<ListProps> = ({
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(
     createInitialData(tasks.length)
   );
+
   const [notesByTask, setNotesByTask] = useState<{ [taskId: number]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
 
@@ -98,16 +108,27 @@ const List: React.FC<ListProps> = ({
   }, [tasks]);
 
   // Initialize steps data for each new task
+  // useEffect(() => {
+  //   setStepsByTask((prev) => {
+  //     const newStepsByTask = { ...prev };
+  //     tasks.forEach((task) => {
+  //       const taskIdStr = task.id.toString();
+  //       if (!newStepsByTask[taskIdStr]) {
+  //         newStepsByTask[taskIdStr] = defaultRows.map((row) => ({ ...row }));
+  //       }
+  //     });
+  //     return newStepsByTask;
+  //   });
+  // }, [tasks]);
   useEffect(() => {
     setStepsByTask((prev) => {
-      const newStepsByTask = { ...prev };
+      const next = { ...prev };
       tasks.forEach((task) => {
-        const taskIdStr = task.id.toString();
-        if (!newStepsByTask[taskIdStr]) {
-          newStepsByTask[taskIdStr] = defaultRows.map((row) => ({ ...row }));
+        if (!next[task.id]) {
+          next[task.id] = defaultRows.map((r) => ({ ...r }));
         }
       });
-      return newStepsByTask;
+      return next;
     });
   }, [tasks]);
 
