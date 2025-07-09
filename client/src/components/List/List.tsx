@@ -82,9 +82,10 @@ const List: React.FC<ListProps> = ({
   // const [stepsByTask, setStepsByTask] = useState<StepsByTask>(
   //   createInitialData(tasks?.length || 0)
   // );
-  const [stepsByTask, setStepsByTask] = useState<StepsByTask>(() =>
-  createInitialData(tasks?.length || 0)
+const [stepsByTask, setStepsByTask] = useState<StepsByTask>(() =>
+  createInitialData(Array.isArray(tasks) ? tasks.length : 0)
 );
+
 
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
