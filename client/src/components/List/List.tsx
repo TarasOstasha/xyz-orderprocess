@@ -80,7 +80,7 @@ const List: React.FC<ListProps> = ({
 
   // Steps/Notes/Pasted local dictionaries
   const [stepsByTask, setStepsByTask] = useState<StepsByTask>(
-    createInitialData(tasks.length)
+    createInitialData(tasks?.length || 0)
   );
   const [notesByTask, setNotesByTask] = useState<{ [taskId: string]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
