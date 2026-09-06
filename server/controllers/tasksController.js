@@ -5,6 +5,7 @@ const {  getUpdatedTask, rebuildPastedHistory, removeTimestamps } = require('../
 const createHttpError = require('http-errors');
 // const { Task, Notes, Steps, PastedHistory, sequelize  } = require('./../models');
 const { Task, Note, Step, PastedHistory } = require('../models');
+const presenceStore = require('../utils/presenceStore');
 
 // const initialTasks = [
 //     {
@@ -213,21 +214,73 @@ module.exports.createTask = async (req, res, next) => {
 module.exports.getTasks = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 25;
     const offset = (page - 1) * limit;
+    const search = (req.query.search || '').toString().trim();
+    const { Op, QueryTypes } = require('sequelize');
+    const { sequelize } = require('../models');
+
+    // Search across task + notes/steps/pasted text, then paginate by task id
+    // (avoid subQuery:false + JOINs, which breaks LIMIT and shows ~1 task)
+    if (search) {
+      const pattern = `%${search}%`;
+      const idRows = await sequelize.query(
+        `
+        SELECT DISTINCT t.id
+        FROM tasks t
+        LEFT JOIN notes n ON n.task_id = t.id
+        LEFT JOIN steps s ON s.task_id = t.id
+        LEFT JOIN pasted_histories p ON p.task_id = t.id
+        WHERE t.title ILIKE :pattern
+           OR t.ship ILIKE :pattern
+           OR t.priority ILIKE :pattern
+           OR n.critical ILIKE :pattern
+           OR n.general ILIKE :pattern
+           OR n.art ILIKE :pattern
+           OR s.step ILIKE :pattern
+           OR s.notes ILIKE :pattern
+           OR s.by ILIKE :pattern
+           OR p.text ILIKE :pattern
+        ORDER BY t.id ASC
+        `,
+        {
+          replacements: { pattern },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const allIds = idRows.map((row) => row.id);
+      const totalPages = Math.ceil(allIds.length / limit) || 1;
+      const pageIds = allIds.slice(offset, offset + limit);
+
+      const tasks =
+        pageIds.length === 0
+          ? []
+          : await Task.findAll({
+              where: { id: { [Op.in]: pageIds } },
+              include: [Note, Step, PastedHistory],
+              order: [['id', 'ASC']],
+            });
+
+      return res.status(200).json({
+        tasks,
+        totalPages,
+        currentPage: page,
+      });
+    }
 
     const { rows, count } = await Task.findAndCountAll({
       limit,
       offset,
       order: [['id', 'ASC']],
       include: [Note, Step, PastedHistory],
-      distinct: true 
+      distinct: true,
     });
 
-    const totalPages = Math.ceil(count / limit);
+    const totalPages = Math.ceil(count / limit) || 1;
 
     return res.status(200).json({
-      tasks: rows,         
+      tasks: rows,
       totalPages,
       currentPage: page,
     });
@@ -439,4 +492,121 @@ module.exports.getUpdatedTaskById = async (req, res, next) => {
   }
 };
 
+/** Save one pasted entry (screenshot / order HTML) to DB immediately */
+module.exports.addPastedHistory = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const task = await Task.findByPk(taskId);
+    if (!task) {
+      return next(createHttpError(404, 'Task Not Found'));
+    }
+
+    const text = req.body.text || '';
+    let images = '';
+
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      const paths = req.files.map((file) =>
+        file.path.replace(/\\/g, '/').replace(/^public\//, '')
+      );
+      images = paths.length === 1 ? paths[0] : JSON.stringify(paths);
+    }
+
+    const created = await PastedHistory.create({
+      taskId,
+      text,
+      images,
+    });
+
+    return res.status(201).json(created);
+  } catch (err) {
+    console.error('addPastedHistory error:', err);
+    return next(err);
+  }
+};
+
+module.exports.updatePastedHistory = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const pasteId = parseInt(req.params.pasteId, 10);
+
+    const row = await PastedHistory.findOne({ where: { id: pasteId, taskId } });
+    if (!row) {
+      return next(createHttpError(404, 'Pasted entry not found'));
+    }
+
+    if (req.body.text !== undefined) {
+      row.text = req.body.text;
+    }
+
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      const paths = req.files.map((file) =>
+        file.path.replace(/\\/g, '/').replace(/^public\//, '')
+      );
+      row.images = paths.length === 1 ? paths[0] : JSON.stringify(paths);
+    }
+
+    await row.save();
+    return res.status(200).json(row);
+  } catch (err) {
+    console.error('updatePastedHistory error:', err);
+    return next(err);
+  }
+};
+
+module.exports.deletePastedHistory = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const pasteId = parseInt(req.params.pasteId, 10);
+
+    const deleted = await PastedHistory.destroy({ where: { id: pasteId, taskId } });
+    if (!deleted) {
+      return next(createHttpError(404, 'Pasted entry not found'));
+    }
+
+    return res.status(204).end();
+  } catch (err) {
+    console.error('deletePastedHistory error:', err);
+    return next(err);
+  }
+};
+
+/** Who is currently working on this task */
+module.exports.getTaskPresence = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    return res.status(200).json({ users: presenceStore.list(taskId) });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/** Join / heartbeat while viewing a task */
+module.exports.upsertTaskPresence = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const { userId, name, email } = req.body || {};
+    if (!userId || !name) {
+      return next(createHttpError(400, 'userId and name are required'));
+    }
+    const users = presenceStore.upsert(taskId, { userId, name, email });
+    return res.status(200).json({ users });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/** Leave a task */
+module.exports.leaveTaskPresence = async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const userId = req.body?.userId || req.query.userId;
+    if (!userId) {
+      return next(createHttpError(400, 'userId is required'));
+    }
+    const users = presenceStore.leave(taskId, userId);
+    return res.status(200).json({ users });
+  } catch (err) {
+    return next(err);
+  }
+};
 

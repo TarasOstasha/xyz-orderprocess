@@ -1,4 +1,4 @@
-// TopNotesTable.tsx (unchanged except for the fact we now pass setNotes differently)
+// TopNotesTable.tsx
 import React from 'react';
 import {
   Box,
@@ -11,23 +11,32 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { PLACEHOLDER_LAST_SAVED_BY } from '../../constants';
 
 export interface OrderNotes {
   critical: string;
   general: string;
   art: string;
+  lastSavedBy?: string;
 }
 
 interface TopNotesTableProps {
-    taskId: number;
-    notes: OrderNotes;
-    setNotes: React.Dispatch<React.SetStateAction<OrderNotes>>;
-  }
+  taskId: number;
+  notes: OrderNotes;
+  setNotes: React.Dispatch<React.SetStateAction<OrderNotes>>;
+}
 
-const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }) => {
-  console.log(JSON.stringify(notes), 'notes');
+const LastSavedLabel: React.FC<{ name?: string; placeholder: string }> = ({
+  name,
+  placeholder,
+}) => (
+  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+    Last saved by: {name || placeholder}
+  </Typography>
+);
+
+const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes }) => {
   const handleCriticalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target.value);
     setNotes((prev) => ({ ...prev, critical: e.target.value }));
   };
   const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +64,10 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }
                   value={notes.critical}
                   onChange={handleCriticalChange}
                 />
+                <LastSavedLabel
+                  name={notes.lastSavedBy}
+                  placeholder={PLACEHOLDER_LAST_SAVED_BY.critical}
+                />
               </TableCell>
             </TableRow>
 
@@ -71,6 +84,10 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }
                   value={notes.general}
                   onChange={handleGeneralChange}
                 />
+                <LastSavedLabel
+                  name={notes.lastSavedBy}
+                  placeholder={PLACEHOLDER_LAST_SAVED_BY.general}
+                />
               </TableCell>
             </TableRow>
 
@@ -86,6 +103,10 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes, taskId }
                   variant="outlined"
                   value={notes.art}
                   onChange={handleArtChange}
+                />
+                <LastSavedLabel
+                  name={notes.lastSavedBy}
+                  placeholder={PLACEHOLDER_LAST_SAVED_BY.art}
                 />
               </TableCell>
             </TableRow>

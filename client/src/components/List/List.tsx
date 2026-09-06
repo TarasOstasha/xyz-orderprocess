@@ -46,7 +46,11 @@ import AddTaskForm from '../forms/AddTaskForm';
 import { StepsByTask, OrderNotes } from '../../types';
 import OrderStepsTable from '../tables/OrderNotesTable';
 import OrderNotesPastedData from '../tables/OrderNotesPastedData';
-import { ALL_STATUSES, defaultRows, initialValues } from '../../constants';
+import PastedHistoryList from '../tables/PastedHistoryList';
+import TaskPresence from './TaskPresence';
+import { ALL_STATUSES, defaultRows, initialValues, CURRENT_USER } from '../../constants';
+import * as API from '../../api';
+import { parseStoredImages, resolveMediaUrl } from '../../utils/media';
 
 // Initialize steps for each task ID
 const createInitialData = (count: number): StepsByTask => {
@@ -97,14 +101,68 @@ const List: React.FC<ListProps> = ({
   const [notesByTask, setNotesByTask] = useState<{ [taskId: number]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
 
-  // ========== SERVER-SIDE PAGINATION ==========
+  // ========== SERVER-SIDE PAGINATION + SEARCH ==========
   useEffect(() => {
-    getTasks(currentPage, itemsPerPage);
+    getTasks(currentPage, itemsPerPage, searchQuery);
   }, [currentPage, itemsPerPage, getTasks]);
 
+  const isFirstSearchEffect = React.useRef(true);
+  // Debounce search so typing “test” hits the API (incl. pasted/OCR text)
+  useEffect(() => {
+    if (isFirstSearchEffect.current) {
+      isFirstSearchEffect.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+      getTasks(1, itemsPerPage, searchQuery);
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 3) Whenever Redux tasks changes, copy them into clientTasks
+  //    and hydrate pasted history from DB (so pastes survive refresh)
   useEffect(() => {
     setClientTasks(tasks);
+    setPastedByTask((prev) => {
+      const next = { ...prev };
+      tasks.forEach((task) => {
+        const serverPastes = (task as any).PastedHistories as
+          | Array<{ id: number; text?: string; images?: unknown }>
+          | undefined;
+        if (!serverPastes?.length) return;
+
+        const byId = new Map<number, PastedEntry>();
+        (next[task.id] || []).forEach((entry) => {
+          if (entry.id) byId.set(entry.id, entry);
+        });
+
+        const merged: PastedEntry[] = serverPastes.map((ph) => {
+          const existing = byId.get(ph.id);
+          const serverImages = parseStoredImages(ph.images).map(resolveMediaUrl);
+          return {
+            id: ph.id,
+            text: ph.text || existing?.text || '',
+            // Prefer already-loaded data URLs in session; else server URLs
+            images:
+              existing?.images?.length && existing.images[0]?.startsWith('data:')
+                ? existing.images
+                : serverImages.length
+                  ? serverImages
+                  : existing?.images || [],
+          };
+        });
+
+        // Keep any local-only entries not yet confirmed by server
+        const serverIds = new Set(serverPastes.map((p) => p.id));
+        const localOnly = (next[task.id] || []).filter((e) => !e.id || !serverIds.has(e.id));
+        next[task.id] = [...merged, ...localOnly.filter((e) => !e.id)];
+      });
+      return next;
+    });
   }, [tasks]);
 
   // Initialize steps data for each new task
@@ -194,10 +252,34 @@ const List: React.FC<ListProps> = ({
     console.log(clickedTask, 'clickedTask');
   };
 
-  // 4) Filter tasks by search in local array
-  const filteredTasks = clientTasks.filter((task) =>
-    task.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // 4) Filter tasks by search — title, notes, steps, pasted/OCR text (incl. unsaved pastes)
+  const filteredTasks = clientTasks.filter((task) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+
+    const localPasted = pastedByTask[task.id] || [];
+    const haystacks: string[] = [
+      task.title,
+      task.ship,
+      task.priority,
+      ...(task.status || []),
+      task.Note?.critical || '',
+      task.Note?.general || '',
+      task.Note?.art || '',
+      ...(task.Steps || []).flatMap((s) => [s.step, s.notes, s.by]),
+      ...((task as any).PastedHistories || []).map((p: { text?: string }) => p.text || ''),
+      ...localPasted.map((p) => p.text || ''),
+      ...(notesByTask[task.id]
+        ? [
+            notesByTask[task.id].critical,
+            notesByTask[task.id].general,
+            notesByTask[task.id].art,
+          ]
+        : []),
+    ];
+
+    return haystacks.some((value) => String(value || '').toLowerCase().includes(q));
+  });
 
   // If tasks is empty, show a message
   if (!tasks.length) {
@@ -245,9 +327,9 @@ const List: React.FC<ListProps> = ({
     );
   };
 
-  // Pasted data
-  const handleSavePastedData = (taskId: number, text: string, images: string[]) => {
-    // Append a new entry to the array
+  // Pasted data — save each paste to DB immediately
+  const handleSavePastedData = async (taskId: number, text: string, images: string[]) => {
+    // Optimistic UI
     setPastedByTask((prev) => {
       const oldEntries = prev[taskId] || [];
       return {
@@ -255,9 +337,34 @@ const List: React.FC<ListProps> = ({
         [taskId]: [...oldEntries, { text, images }],
       };
     });
+
+    try {
+      const { data } = await API.addPastedHistory(taskId, text, images);
+      const serverImages = parseStoredImages(data.images).map(resolveMediaUrl);
+
+      setPastedByTask((prev) => {
+        const entries = [...(prev[taskId] || [])];
+        // Attach server id to the matching optimistic entry (last without id + same text)
+        for (let i = entries.length - 1; i >= 0; i--) {
+          if (!entries[i].id && entries[i].text === text) {
+            entries[i] = {
+              ...entries[i],
+              id: data.id,
+              text: data.text || text,
+              images: images.length ? images : serverImages,
+            };
+            break;
+          }
+        }
+        return { ...prev, [taskId]: entries };
+      });
+    } catch (err) {
+      console.error('Failed to save pasted data to DB', err);
+      alert('Paste is visible locally but failed to save to the database. Check the server and try again.');
+    }
   };
 
-  // "Save Task" => merges local changes into a final payload, then calls updateTask
+  // "Save Task" => notes/steps/status (pastes already auto-save to DB)
   const handleSaveAllData = () => {
     if (!selectedTask) return;
     const taskId = selectedTask.id;
@@ -269,9 +376,14 @@ const List: React.FC<ListProps> = ({
       images: [],
     };
     const steps = stepsByTask[taskId] || [];
-    const pastedHistory = pastedByTask[taskId] || [];
+    const saver = CURRENT_USER.name;
 
-    // The final object to send to server
+    const notesWithSaver = { ...notes, lastSavedBy: saver };
+    const stepsWithSaver = steps.map((step) => ({ ...step, lastSavedBy: saver }));
+
+    setNotesByTask((prev) => ({ ...prev, [taskId]: notesWithSaver }));
+    setStepsByTask((prev) => ({ ...prev, [taskId]: stepsWithSaver }));
+
     const payload: SavePayload = {
       id: selectedTask.id,
       title: selectedTask.title,
@@ -280,9 +392,10 @@ const List: React.FC<ListProps> = ({
       dueDate: selectedTask.dueDate,
       inHand: selectedTask.inHand,
       status: selectedTask.status,
-      notes,
-      steps,
-      pastedHistory,
+      notes: notesWithSaver,
+      steps: stepsWithSaver,
+      // Pastes are saved via POST /pasted-history — avoid re-uploading/duplicating
+      pastedHistory: [],
       priority: selectedTask.priority,
     };
 
@@ -332,6 +445,7 @@ const List: React.FC<ListProps> = ({
           onChange={(e) => setSearchQuery(e.target.value)}
           sx={{ width: '500px' }}
           className={styles.searchTask}
+          helperText="Searches titles, notes, steps, and text inside pasted orders/screenshots"
         />
       </Box>
 
@@ -460,6 +574,7 @@ const List: React.FC<ListProps> = ({
                     Save Task
                   </Button>
                 </Box>
+                <TaskPresence taskId={selectedTask.id} />
                 <Box
                   minHeight="200px"
                   p={2}
@@ -639,29 +754,17 @@ const List: React.FC<ListProps> = ({
                   selectedTask={selectedTask}
                   onSavePastedData={handleSavePastedData}
                 />
-                {selectedTask && pastedByTask[selectedTask.id] && (
-                  <Box mt={2}>
-                    {pastedByTask[selectedTask.id].map((entry, idx) => (
-                      <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #ddd' }}>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#333' }}>
-                          {entry.text}
-                        </Typography>
-
-                        {entry.images.length > 0 && (
-                          <Box mt={1} display="flex" flexDirection="column" gap={1}>
-                            {entry.images.map((img, i2) => (
-                              <img
-                                key={i2}
-                                src={img}
-                                alt="Pasted"
-                                style={{ width: '100%', border: '1px solid #ccc' }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
+                {selectedTask && (
+                  <PastedHistoryList
+                    taskId={selectedTask.id}
+                    entries={pastedByTask[selectedTask.id] || []}
+                    onChange={(entries) =>
+                      setPastedByTask((prev) => ({
+                        ...prev,
+                        [selectedTask.id]: entries,
+                      }))
+                    }
+                  />
                 )}
               </>
             )}
@@ -715,7 +818,8 @@ const mapStateToProps = ({ tasks: { tasks, totalPages, currentPage, limit } }: a
 
 // Map Redux dispatch to props
 const mapDispatchToProps = (dispatch: any) => ({
-  getTasks: (page: number, limit: number) => dispatch(getTasksThunk({ page, limit })),
+  getTasks: (page: number, limit: number, search = '') =>
+    dispatch(getTasksThunk({ page, limit, search })),
   removeTask: (id: number) => dispatch(removeTaskThunk(id)),
   updateTask: (task: SavePayload) => dispatch(updateTaskThunk(task)),
   addTask: (task: Task) => dispatch(createTaskThunk(task)),

@@ -35,7 +35,16 @@ function dataURLtoFile(dataURL: string, filename: string): File {
   return new File([u8arr], filename, { type: mime });
 }
 
-export const getTasks = (page: number, limit: number) => axiosInstance.get(`/tasks?page=${page}&limit=${limit}`);
+export const getTasks = (page: number, limit: number, search = '') => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (search.trim()) {
+    params.set('search', search.trim());
+  }
+  return axiosInstance.get(`/tasks?${params.toString()}`);
+};
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
 
@@ -94,4 +103,57 @@ export const updateTask = (payload: SavePayload) => {
 
 export const createTask = (task: Task) => axiosInstance.post('/tasks', task);
 
-// export default axiosInstance;
+/** Persist one pasted screenshot/order entry to the DB immediately */
+export const addPastedHistory = (taskId: number, text: string, images: string[]) => {
+  const formData = new FormData();
+  formData.append('text', text || '');
+
+  images.forEach((img, imgIndex) => {
+    if (img.startsWith('data:')) {
+      const file = dataURLtoFile(img, `paste-${Date.now()}-${imgIndex}.png`);
+      formData.append('images', file);
+    }
+  });
+
+  return axiosInstance.post(`/tasks/${taskId}/pasted-history`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const updatePastedHistory = (
+  taskId: number,
+  pasteId: number,
+  text: string,
+  images: string[] = []
+) => {
+  const formData = new FormData();
+  formData.append('text', text || '');
+
+  images.forEach((img, imgIndex) => {
+    if (img.startsWith('data:')) {
+      const file = dataURLtoFile(img, `paste-edit-${Date.now()}-${imgIndex}.png`);
+      formData.append('images', file);
+    }
+  });
+
+  return axiosInstance.put(`/tasks/${taskId}/pasted-history/${pasteId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const deletePastedHistory = (taskId: number, pasteId: number) =>
+  axiosInstance.delete(`/tasks/${taskId}/pasted-history/${pasteId}`);
+
+export const getTaskPresence = (taskId: number) =>
+  axiosInstance.get(`/tasks/${taskId}/presence`);
+
+export const upsertTaskPresence = (taskId: number, user: { userId: string; name: string; email?: string }) =>
+  axiosInstance.post(`/tasks/${taskId}/presence`, user);
+
+export const leaveTaskPresence = (taskId: number, userId: string) =>
+  axiosInstance.delete(`/tasks/${taskId}/presence`, { data: { userId } });
+

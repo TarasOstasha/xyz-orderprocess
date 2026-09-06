@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     critical: DataTypes.TEXT,
     general: DataTypes.TEXT,
     art: DataTypes.TEXT,
+    lastSavedBy: DataTypes.STRING,
     taskId: DataTypes.INTEGER
   }, {
     sequelize,

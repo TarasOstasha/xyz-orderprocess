@@ -1,101 +1,226 @@
-import React, { useState } from 'react';
-import { Box, Typography, TextField, Button } from '@mui/material';
+import React, { useRef, useState } from 'react';
+import { Box, Typography, TextField, Button, CircularProgress } from '@mui/material';
+import html2canvas from 'html2canvas';
 import { Task } from '../../types';
+import { htmlToPlainText, ocrImage } from '../../utils/extractSearchText';
 
 interface OrderNotesPastedDataProps {
   selectedTask: Task;
-  // Called by the child on each "SAVE" so the parent can store the data
-  onSavePastedData?: (taskId: number, text: string, images: string[]) => void;
+  onSavePastedData?: (taskId: number, text: string, images: string[]) => void | Promise<void>;
 }
+
+const looksLikeHtml = (str: string) => /<\/?[a-z][\s\S]*>/i.test(str);
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function collectClipboardImages(clipboardData: DataTransfer): Promise<string[]> {
+  const files: File[] = [];
+  const seen = new Set<string>();
+
+  const pushFile = (file: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const key = `${file.type}:${file.size}:${file.name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    files.push(file);
+  };
+
+  if (clipboardData.files?.length) {
+    for (let i = 0; i < clipboardData.files.length; i++) {
+      pushFile(clipboardData.files[i]);
+    }
+  }
+
+  if (clipboardData.items?.length) {
+    for (let i = 0; i < clipboardData.items.length; i++) {
+      const item = clipboardData.items[i];
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        pushFile(item.getAsFile());
+      }
+    }
+  }
+
+  return Promise.all(files.map(readFileAsDataUrl));
+}
+
+function isSubstantialHtml(html: string): boolean {
+  const trimmed = html.trim();
+  if (!trimmed) return false;
+  const withoutTags = trimmed.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+  if (withoutTags.length < 20 && /<img\b/i.test(trimmed)) return false;
+  return (
+    /<table\b/i.test(trimmed) ||
+    /StartFragment/i.test(trimmed) ||
+    withoutTags.length > 40 ||
+    (trimmed.match(/<(p|div|tr|td|span)\b/gi) || []).length >= 3
+  );
+}
+
+async function convertHtmlToImage(html: string): Promise<string> {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '0';
+  container.style.width = '800px';
+  container.style.padding = '16px';
+  container.style.background = '#ffffff';
+  container.style.color = '#222222';
+  container.style.zIndex = '-1';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+    });
+    return canvas.toDataURL('image/png');
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+type PasteJob =
+  | { type: 'images'; images: string[] }
+  | { type: 'html'; html: string; fallbackText: string }
+  | { type: 'text'; text: string };
 
 const OrderNotesPastedData: React.FC<OrderNotesPastedDataProps> = ({
   selectedTask,
   onSavePastedData,
 }) => {
-  // For each taskId, we store the current text and images in local state
-  const [pastedData, setPastedData] = useState<{ [taskId: number]: string }>({});
-  const [pastedImages, setPastedImages] = useState<{ [taskId: number]: string[] }>({});
+  const [textDraft, setTextDraft] = useState<{ [taskId: number]: string }>({});
+  const [statusMessage, setStatusMessage] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingCountRef = useRef(0);
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const addEntry = (taskId: number, text: string, images: string[]) => {
+    if (!onSavePastedData) return;
+    if (!text && images.length === 0) return;
+    onSavePastedData(taskId, text, images);
+  };
+
+  const enqueue = (taskId: number, job: PasteJob) => {
+    pendingCountRef.current += 1;
+    setIsBusy(true);
+
+    queueRef.current = queueRef.current
+      .then(async () => {
+        if (job.type === 'images') {
+          for (const img of job.images) {
+            setStatusMessage('Reading text from screenshot for search…');
+            let searchable = '';
+            try {
+              searchable = await ocrImage(img);
+            } catch (err) {
+              console.error('OCR failed', err);
+            }
+            addEntry(taskId, searchable, [img]);
+          }
+          return;
+        }
+
+        if (job.type === 'html') {
+          const searchable = htmlToPlainText(job.html) || job.fallbackText || '';
+          setStatusMessage('Converting order to image…');
+          try {
+            const dataUrl = await convertHtmlToImage(job.html);
+            addEntry(taskId, searchable, [dataUrl]);
+          } catch (err) {
+            console.error('Failed to convert pasted HTML to image', err);
+            if (searchable && !looksLikeHtml(searchable)) {
+              addEntry(taskId, searchable, []);
+            }
+          }
+          return;
+        }
+
+        if (job.text && !looksLikeHtml(job.text)) {
+          addEntry(taskId, job.text, []);
+        }
+      })
+      .catch((err) => {
+        console.error('Paste queue error', err);
+      })
+      .finally(() => {
+        pendingCountRef.current = Math.max(0, pendingCountRef.current - 1);
+        if (pendingCountRef.current === 0) {
+          setIsBusy(false);
+          setStatusMessage('');
+        }
+      });
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
 
-    const { items } = e.clipboardData;
-    for (const item of items) {
-      if (item.type.includes('image')) {
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setPastedImages((prev) => ({
-              ...prev,
-              [selectedTask.id]: [
-                ...(prev[selectedTask.id] || []),
-                event.target?.result as string,
-              ],
-            }));
-          };
-          reader.readAsDataURL(file);
-        }
-      }
+    const taskId = selectedTask.id;
+    const { clipboardData } = e;
+
+    let nativeImages: string[] = [];
+    try {
+      nativeImages = await collectClipboardImages(clipboardData);
+    } catch (err) {
+      console.error('Failed to read clipboard images', err);
     }
 
-    const rawHtml = e.clipboardData.getData('text/html');
-    const rawPlain = e.clipboardData.getData('text/plain');
-    const rawText = e.clipboardData.getData('text');
+    if (nativeImages.length > 0) {
+      enqueue(taskId, { type: 'images', images: nativeImages });
+      return;
+    }
 
-    if (rawHtml && rawHtml.trim().length > 0) {
-      setPastedData((prev) => ({
+    const rawHtml = clipboardData.getData('text/html');
+    const rawPlain = clipboardData.getData('text/plain');
+    const rawText = clipboardData.getData('text');
+    const fallbackText = (rawPlain || rawText || '').trim();
+
+    if (rawHtml && isSubstantialHtml(rawHtml)) {
+      enqueue(taskId, { type: 'html', html: rawHtml, fallbackText });
+      return;
+    }
+
+    if (fallbackText && !looksLikeHtml(fallbackText)) {
+      setTextDraft((prev) => ({
         ...prev,
-        [selectedTask.id]: rawHtml,
+        [taskId]: prev[taskId] ? `${prev[taskId]}\n${fallbackText}` : fallbackText,
       }));
-    } else {
-      let textContent = rawPlain;
-      if (!textContent.trim()) {
-        textContent = rawText;
-      }
-      if (textContent) {
-        setPastedData((prev) => ({
-          ...prev,
-          [selectedTask.id]: textContent,
-        }));
-      }
     }
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!selectedTask) return;
-    setPastedData((prev) => ({
+    setTextDraft((prev) => ({
       ...prev,
       [selectedTask.id]: e.target.value,
     }));
   };
 
-  const handleSaveClick = () => {
-    if (!selectedTask) return;
+  const handleSaveTextClick = () => {
+    if (!selectedTask || isBusy) return;
+    const text = (textDraft[selectedTask.id] || '').trim();
+    const safeText = looksLikeHtml(text) ? '' : text;
+    if (!safeText) return;
 
-    const text = pastedData[selectedTask.id] || '';
-    const images = pastedImages[selectedTask.id] || [];
-
-    // Call parent callback to store this new "entry" in the parent's list
-    if (onSavePastedData) {
-      onSavePastedData(selectedTask.id, text, images);
-    }
-
-    // CLEAR the child's local state so the text field and images are empty
-    setPastedData((prev) => ({
+    addEntry(selectedTask.id, safeText, []);
+    setTextDraft((prev) => ({
       ...prev,
       [selectedTask.id]: '',
     }));
-    setPastedImages((prev) => ({
-      ...prev,
-      [selectedTask.id]: [],
-    }));
   };
 
-  // Decide what text to show in the text field
-  const content = pastedData[selectedTask.id] || '';
-  const looksLikeHtml = (str: string) => /<\/?[a-z][\s\S]*>/i.test(str);
+  const content = textDraft[selectedTask.id] || '';
 
   return (
     <Box>
@@ -110,46 +235,44 @@ const OrderNotesPastedData: React.FC<OrderNotesPastedDataProps> = ({
         onPaste={handlePaste}
         onChange={handleTextChange}
         value={content}
+        helperText="Each paste is saved to the database automatically and indexed for Search Tasks."
       />
 
-      {/* Display Pasted Content */}
-      {content && (
-        <Box
-          mt={2}
-          p={2}
-          sx={{
-            backgroundColor: '#f9f9f9',
-            borderRadius: 1,
-            border: '1px solid #ddd',
-            maxHeight: '300px',
-            overflowY: 'auto',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          {looksLikeHtml(content) ? (
-            <Typography variant="body1" dangerouslySetInnerHTML={{ __html: content }} />
-          ) : (
-            <Typography variant="body1" sx={{ color: '#333' }}>{content}</Typography>
-          )}
-        </Box>
-      )}
-
-      {/* Display Pasted Images */}
-      {pastedImages[selectedTask.id] && pastedImages[selectedTask.id].length > 0 && (
-        <Box mt={2} display="flex" flexDirection="column" gap={2}>
-          {pastedImages[selectedTask.id].map((img, i) => (
-            <Box key={i} sx={{ maxWidth: '100%', border: '1px solid #ddd' }}>
-              <img src={img} alt="Pasted" style={{ width: '100%' }} />
-            </Box>
-          ))}
-        </Box>
-      )}
-
-      <Box mt={2}>
-        <Button variant="contained" onClick={handleSaveClick}>
-          SAVE PASTED DATA
-        </Button>
+      <Box
+        mt={1}
+        p={2}
+        tabIndex={0}
+        onPaste={handlePaste}
+        sx={{
+          border: '1px dashed #bbb',
+          borderRadius: 1,
+          backgroundColor: '#fafafa',
+          outline: 'none',
+          cursor: 'text',
+          '&:focus': { borderColor: 'primary.main', backgroundColor: '#f0f7ff' },
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Click here and paste (Ctrl+V). Each paste is saved to the DB one after another.
+        </Typography>
       </Box>
+
+      {isBusy && (
+        <Box mt={2} display="flex" alignItems="center" gap={1}>
+          <CircularProgress size={20} />
+          <Typography variant="body2" color="text.secondary">
+            {statusMessage || 'Adding pasted item…'}
+          </Typography>
+        </Box>
+      )}
+
+      {content && !looksLikeHtml(content) && (
+        <Box mt={2}>
+          <Button variant="contained" onClick={handleSaveTextClick} disabled={isBusy}>
+            SAVE TEXT NOTE
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

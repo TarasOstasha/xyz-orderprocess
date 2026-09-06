@@ -25,6 +25,7 @@ export interface Task {
     critical?: string;
     general?: string;
     art?: string;
+    lastSavedBy?: string;
   };
   Steps?: StepRow[];
 };
@@ -62,7 +63,8 @@ export interface StepRow {
   step: string;
   date: string;
   by: string;
-  notes: string; 
+  notes: string;
+  lastSavedBy?: string;
 };
 
 export interface ListProps {
@@ -71,9 +73,9 @@ export interface ListProps {
   currentPage: number;
   itemsPerPage: number; // from slice => state.tasks.limit
   // Thunks
-  getTasks: (page: number, limit: number) => void;
+  getTasks: (page: number, limit: number, search?: string) => void;
   removeTask: (taskId: number) => void;
-  updateTask: (updatedTask: Task) => void;
+  updateTask: (updatedTask: SavePayload) => void;
   addTask: (task: Task) => void;
   // Pagination actions
   setCurrentPage: (page: number) => void;
@@ -84,12 +86,14 @@ export interface OrderNotes {
   critical: string;
   general: string;
   art: string;
+  lastSavedBy?: string;
   // Optional new fields:
   pasted?: any; // for HTML or text
   images?: string[]; // base64-encoded images
 };
 
 export interface PastedEntry {
+  id?: number;
   text: string;
   images: string[];
 };
@@ -118,7 +122,8 @@ export interface StepRow {
   step: string;
   date: string;
   by: string;
-  notes: string; 
+  notes: string;
+  lastSavedBy?: string;
 };
 
 export type StepsByTask = {

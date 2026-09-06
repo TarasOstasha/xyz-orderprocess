@@ -23,10 +23,12 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "formik": "^2.4.6",
+    "html2canvas": "^1.4.1",
     "lodash": "^4.17.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5",
     "yup": "^1.6.1"
   },

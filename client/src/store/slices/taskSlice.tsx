@@ -229,7 +229,7 @@ const initialState: TasksState = {
   tasks: [],
   currentPage: 1,
   totalPages: 1,
-  limit: 5,
+  limit: 25,
   isFetching: false,
   error: null,
 };
@@ -263,15 +263,15 @@ export const createTaskThunk = createAsyncThunk<Task, Task, { rejectValue: TaskE
 
 // tasks/get
 export const getTasksThunk = createAsyncThunk<
-  { tasks: Task[]; totalPages: number; currentPage: number }, // Success payload type
-  { page: number; limit: number },  // Input parameters
-  { rejectValue: TaskError }  // Error handling
+  { tasks: Task[]; totalPages: number; currentPage: number },
+  { page: number; limit: number; search?: string },
+  { rejectValue: TaskError }
 >(
   `${TASKS_SLICE_NAME}/get`,
-  async ({ page, limit }, thunkAPI) => {
+  async ({ page, limit, search = '' }, thunkAPI) => {
     try {
-      const response = await API.getTasks(page, limit);
-      return response.data;  // Should return { tasks, totalPages, currentPage }
+      const response = await API.getTasks(page, limit, search);
+      return response.data;
     } catch (err: any) {
       if (err instanceof AxiosError) {
         return thunkAPI.rejectWithValue({

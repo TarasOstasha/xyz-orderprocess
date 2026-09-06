@@ -4,7 +4,7 @@ import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
 import { Box, Typography, Button } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
 import { StepRow, OrderStepsTableProps } from '../../types';
-import { columns } from '../../constants';
+import { columns, PLACEHOLDER_LAST_SAVED_BY, MOCK_USERS_ON_TASK, CURRENT_USER } from '../../constants';
 
 
 
@@ -16,8 +16,16 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   setNotesByTask,
   selectedTask
 }) => {
-  // Grab rows for this task
-  const rows = stepsByTask[taskId] || [];
+  // Grab rows for this task — fill empty lastSavedBy with placeholders for demo look
+  const placeholderNames = [
+    CURRENT_USER.name,
+    ...MOCK_USERS_ON_TASK.map((u) => u.name),
+    PLACEHOLDER_LAST_SAVED_BY.step,
+  ];
+  const rows = (stepsByTask[taskId] || []).map((row, index) => ({
+    ...row,
+    lastSavedBy: row.lastSavedBy || placeholderNames[index % placeholderNames.length],
+  }));
 
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
@@ -60,6 +68,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
           critical: serverNotes.critical || '',
           general:  serverNotes.general  || '',
           art:      serverNotes.art      || '',
+          lastSavedBy: (serverNotes as { lastSavedBy?: string }).lastSavedBy || '',
         },
       };
     });
@@ -102,7 +111,12 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
           rows={rows}
           columns={columns}
           processRowUpdate={handleProcessRowUpdate}
+          disableColumnResize={false}
           sx={{
+            width: '100%',
+            '& .MuiDataGrid-main': { width: '100%' },
+            '& .MuiDataGrid-virtualScroller': { overflowX: 'hidden' },
+            '& .MuiDataGrid-columnHeaders': { width: '100% !important' },
             '& .MuiDataGrid-row:nth-of-type(1)': { backgroundColor: '#90EE90' },
             '& .MuiDataGrid-row:nth-of-type(2)': { backgroundColor: '#90EE90' },
             '& .MuiDataGrid-row:nth-of-type(3)': { backgroundColor: '#90EE90' },
