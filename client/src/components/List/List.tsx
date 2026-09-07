@@ -290,10 +290,33 @@ const List: React.FC<ListProps> = ({
     return haystacks.some((value) => String(value || '').toLowerCase().includes(q));
   });
 
-  // If tasks is empty, show a message
-  if (!tasks.length) {
-    return <Typography variant="h6">No tasks available</Typography>;
-  }
+  // Capture baseline content when a task is selected (for per-field last-saved-by)
+  // MUST stay above any conditional return (Rules of Hooks)
+  useEffect(() => {
+    if (!selectedTask) return;
+    const id = selectedTask.id;
+    if (!notesBaselineRef.current[id]) {
+      const n = selectedTask.Note || {};
+      notesBaselineRef.current[id] = {
+        critical: n.critical || '',
+        general: n.general || '',
+        art: n.art || '',
+      };
+    }
+    if (!stepsBaselineRef.current[id] && selectedTask.Steps?.length) {
+      stepsBaselineRef.current[id] = selectedTask.Steps.map((s) => ({ ...s }));
+    }
+  }, [selectedTask]);
+
+  // When steps load into local state (often after select), seed baseline once
+  useEffect(() => {
+    if (!selectedTask) return;
+    const id = selectedTask.id;
+    const current = stepsByTask[id];
+    if (current?.length && !stepsBaselineRef.current[id]) {
+      stepsBaselineRef.current[id] = current.map((s) => ({ ...s }));
+    }
+  }, [selectedTask, stepsByTask]);
 
   // =========== TWO-BOX STATUS LOGIC ===========
   const selectedStatuses = selectedTask?.status || [];
@@ -373,23 +396,6 @@ const List: React.FC<ListProps> = ({
     }
   };
 
-  // Capture baseline content when a task is selected (for per-field last-saved-by)
-  useEffect(() => {
-    if (!selectedTask) return;
-    const id = selectedTask.id;
-    if (!notesBaselineRef.current[id]) {
-      const n = selectedTask.Note || {};
-      notesBaselineRef.current[id] = {
-        critical: n.critical || '',
-        general: n.general || '',
-        art: n.art || '',
-      };
-    }
-    if (!stepsBaselineRef.current[id] && selectedTask.Steps?.length) {
-      stepsBaselineRef.current[id] = selectedTask.Steps.map((s) => ({ ...s }));
-    }
-  }, [selectedTask]);
-
   // "Save Task" => notes/steps/status (pastes already auto-save to DB)
   const handleSaveAllData = () => {
     if (!selectedTask) return;
@@ -420,12 +426,18 @@ const List: React.FC<ListProps> = ({
     };
 
     const stepBaseline = stepsBaselineRef.current[taskId] || [];
+    const norm = (v: unknown) => (v == null ? '' : String(v));
     const stepFingerprint = (s: StepRow) =>
-      `${s.step}|${s.date}|${s.by}|${s.notes}`;
+      `${norm(s.step)}|${norm(s.date)}|${norm(s.by)}|${norm(s.notes)}`;
 
+    // Only mark Saved by on steps the user actually edited.
+    // If we have no baseline yet, do NOT stamp every row as edited.
     const stepsWithSaver = steps.map((step) => {
-      const prev = stepBaseline.find((s) => s.id === step.id);
-      const changed = !prev || stepFingerprint(prev) !== stepFingerprint(step);
+      const prev = stepBaseline.find((s) => Number(s.id) === Number(step.id));
+      if (!prev) {
+        return step;
+      }
+      const changed = stepFingerprint(prev) !== stepFingerprint(step);
       return changed ? { ...step, lastSavedBy: saver } : step;
     });
 
@@ -480,6 +492,10 @@ const List: React.FC<ListProps> = ({
   const handleCancelTop = () => {
     setIsEditing(false);
   };
+
+  if (!tasks.length) {
+    return <Typography variant="h6">No tasks available</Typography>;
+  }
 
   return (
     <Box

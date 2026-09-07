@@ -407,14 +407,15 @@ module.exports.updateTaskById = async (req, res, next) => {
     //    If steps is an array => we can replace them or partially update.
     // ─────────────────────────────────────────────────────────
     if (Array.isArray(req.body.steps)) {
-      // In this example, let's DELETE all old rows & re-insert:
+      // Replace steps from payload. Respect per-step lastSavedBy from the client
+      // (only rows the user actually edited). Do NOT stamp every row with saverName.
       await Step.destroy({ where: { taskId } });
       for (const stepData of req.body.steps) {
-        // Omit stepData.id if you want auto-increment
+        const { id: _omitId, ...rest } = stepData;
         await Step.create({
-          ...stepData,
+          ...rest,
           taskId,
-          ...(saverName ? { lastSavedBy: saverName } : {}),
+          lastSavedBy: stepData.lastSavedBy || null,
         });
       }
     }
