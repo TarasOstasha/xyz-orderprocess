@@ -1,12 +1,10 @@
 // OrderStepsTable.tsx
 import React, { useEffect } from 'react';
-import { DataGrid, GridColDef, GridRowModel } from '@mui/x-data-grid';
-import { Box, Typography, Button } from '@mui/material';
+import { DataGrid, GridRowModel } from '@mui/x-data-grid';
+import { Box, Typography } from '@mui/material';
 import TopNotesTable from './TopNotesTable';
 import { StepRow, OrderStepsTableProps } from '../../types';
-import { columns, PLACEHOLDER_LAST_SAVED_BY, MOCK_USERS_ON_TASK, CURRENT_USER } from '../../constants';
-
-
+import { columns } from '../../constants';
 
 const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   taskId,
@@ -16,16 +14,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
   setNotesByTask,
   selectedTask
 }) => {
-  // Grab rows for this task — fill empty lastSavedBy with placeholders for demo look
-  const placeholderNames = [
-    CURRENT_USER.name,
-    ...MOCK_USERS_ON_TASK.map((u) => u.name),
-    PLACEHOLDER_LAST_SAVED_BY.step,
-  ];
-  const rows = (stepsByTask[taskId] || []).map((row, index) => ({
-    ...row,
-    lastSavedBy: row.lastSavedBy || placeholderNames[index % placeholderNames.length],
-  }));
+  const rows = stepsByTask[taskId] || [];
 
   // Grab the notes for this task, or default to empty
   const notesForThisTask = notesByTask[taskId] || {
@@ -66,9 +55,11 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
         ...prev,
         [selectedTask.id]: {
           critical: serverNotes.critical || '',
-          general:  serverNotes.general  || '',
-          art:      serverNotes.art      || '',
-          lastSavedBy: (serverNotes as { lastSavedBy?: string }).lastSavedBy || '',
+          general: serverNotes.general || '',
+          art: serverNotes.art || '',
+          criticalSavedBy: serverNotes.criticalSavedBy || '',
+          generalSavedBy: serverNotes.generalSavedBy || '',
+          artSavedBy: serverNotes.artSavedBy || '',
         },
       };
     });
@@ -78,7 +69,7 @@ const OrderStepsTable: React.FC<OrderStepsTableProps> = ({
     if (!selectedTask || selectedTask.Steps?.length === 0) return;
     setStepsByTask((prev) => ({
       ...prev,
-      [selectedTask.id]: selectedTask.Steps || []
+      [selectedTask.id]: selectedTask.Steps || [],
     }));
   }, [selectedTask]);
 

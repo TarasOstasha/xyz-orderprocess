@@ -26,4 +26,21 @@ export const TASK_VALIDATION_SCHEMA = Yup.object().shape({
     .required('Priority is required')
     .oneOf(['Low', 'Medium', 'High'], 'Priority must be Low, Medium, or High'),
 });
+
+export const LOGIN_VALIDATION_SCHEMA = Yup.object().shape({
+  email: Yup.string().email('Enter a valid email').required('Email is required'),
+  password: Yup.string().required('Password is required'),
+});
+
+export const SIGNUP_VALIDATION_SCHEMA = Yup.object().shape({
+  name: Yup.string()
+    .required('Name is required')
+    .min(2, 'Name must be at least 2 characters')
+    .max(80, 'Name must not exceed 80 characters'),
+  email: Yup.string().email('Enter a valid email').required('Email is required'),
+  password: Yup.string()
+    .required('Password is required')
+    .min(6, 'Password must be at least 6 characters'),
+});
+
 export default TASK_VALIDATION_SCHEMA;

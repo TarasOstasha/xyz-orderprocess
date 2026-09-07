@@ -1,6 +1,7 @@
 import axios from 'axios';
 import _ from 'lodash';
 import { SavePayload } from '../types';
+import { getStoredToken, TOKEN_KEY } from '../utils/authStorage';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -10,6 +11,32 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+axiosInstance.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const url = String(error.config?.url || '');
+      const isAuthAttempt =
+        url.includes('/auth/login') || url.includes('/auth/signup');
+      if (!isAuthAttempt) {
+        localStorage.removeItem(TOKEN_KEY);
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.assign('/login');
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 interface Task {
   id: number;
@@ -23,9 +50,9 @@ function dataURLtoFile(dataURL: string, filename: string): File {
   const arr = dataURL.split(',');
   const mimeMatch = arr[0].match(/:(.*?);/);
   if (!mimeMatch) throw new Error('Invalid data URL');
-  const mime = mimeMatch[1]; // e.g. "image/png"
+  const mime = mimeMatch[1];
 
-  const bstr = atob(arr[1]); // decode base64
+  const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);
   while (n--) {
@@ -34,6 +61,14 @@ function dataURLtoFile(dataURL: string, filename: string): File {
 
   return new File([u8arr], filename, { type: mime });
 }
+
+export const signup = (payload: { name: string; email: string; password: string }) =>
+  axiosInstance.post('/auth/signup', payload);
+
+export const login = (payload: { email: string; password: string }) =>
+  axiosInstance.post('/auth/login', payload);
+
+export const getMe = () => axiosInstance.get('/auth/me');
 
 export const getTasks = (page: number, limit: number, search = '') => {
   const params = new URLSearchParams({
@@ -48,13 +83,10 @@ export const getTasks = (page: number, limit: number, search = '') => {
 
 export const removeTaskById = (id: number) => axiosInstance.delete(`/tasks/${id}`);
 
-// export const updateTask = ( task: SavePayload) => axiosInstance.put(`/tasks/${task.id}`, task);
 export const updateTask = (payload: SavePayload) => {
-  console.log(payload,'payload')
-  // 1) Build FormData
+  console.log(payload, 'payload');
   const formData = new FormData();
 
-  // -- Append simple text/number fields:
   formData.append('title', payload.title || '');
   formData.append('ship', payload.ship || '');
   formData.append('art', payload.art || '');
@@ -62,37 +94,27 @@ export const updateTask = (payload: SavePayload) => {
   formData.append('inHand', payload.inHand || '');
   formData.append('priority', payload.priority || '');
 
-  // If `status` is an array or object, convert to JSON
   if (payload.status) {
     formData.append('status', JSON.stringify(payload.status));
   }
 
-  // -- Append object fields as JSON
   formData.append('notes', JSON.stringify(payload.notes));
-  const sanitizedSteps = payload.steps.map(step => _.omit(step, 'id'));
+  const sanitizedSteps = payload.steps.map((step) => _.omit(step, 'id'));
   formData.append('steps', JSON.stringify(sanitizedSteps));
 
-  // -- Append pastedHistory items (text + files)
   payload.pastedHistory.forEach((item, index) => {
     formData.append(`pastedHistory[${index}].text`, item.text || '');
-  
+
     if (item.images && item.images.length) {
       item.images.forEach((base64Str, imgIndex) => {
-        // Convert the base64 string into a real File
         const file = dataURLtoFile(
           base64Str,
           `pastedHistory-${index}-img-${imgIndex}.png`
         );
-       // console.log(file, 'file')
         formData.append(`pastedHistory[${index}].images`, file);
       });
     }
   });
-
-  //2) Send a PUT request with multipart/form-data
-  // for (let [key, value] of formData.entries()) {
-  //   console.log(key, value);
-  // }
 
   return axiosInstance.put(`/tasks/${payload.id}`, formData, {
     headers: {
@@ -103,7 +125,6 @@ export const updateTask = (payload: SavePayload) => {
 
 export const createTask = (task: Task) => axiosInstance.post('/tasks', task);
 
-/** Persist one pasted screenshot/order entry to the DB immediately */
 export const addPastedHistory = (taskId: number, text: string, images: string[]) => {
   const formData = new FormData();
   formData.append('text', text || '');
@@ -151,9 +172,8 @@ export const deletePastedHistory = (taskId: number, pasteId: number) =>
 export const getTaskPresence = (taskId: number) =>
   axiosInstance.get(`/tasks/${taskId}/presence`);
 
-export const upsertTaskPresence = (taskId: number, user: { userId: string; name: string; email?: string }) =>
-  axiosInstance.post(`/tasks/${taskId}/presence`, user);
+export const upsertTaskPresence = (taskId: number) =>
+  axiosInstance.post(`/tasks/${taskId}/presence`);
 
-export const leaveTaskPresence = (taskId: number, userId: string) =>
-  axiosInstance.delete(`/tasks/${taskId}/presence`, { data: { userId } });
-
+export const leaveTaskPresence = (taskId: number) =>
+  axiosInstance.delete(`/tasks/${taskId}/presence`);

@@ -377,21 +377,26 @@ module.exports.updateTaskById = async (req, res, next) => {
     // ─────────────────────────────────────────────────────────
     // 3) PARTIAL UPDATE for the Task's Note (if provided)
     // ─────────────────────────────────────────────────────────
+    const saverName = req.user?.name;
     if (req.body.notes !== undefined) {
       // If notes is not in req.body, we skip => old notes remain
+      const notesPayload = {
+        ...req.body.notes,
+        ...(saverName ? { lastSavedBy: saverName } : {}),
+      };
       const existingNote = await Note.findOne({ where: { taskId } });
       console.log(existingNote, 'existingNote')
       if (!existingNote) {
         // If none found, create
         await Note.create({
-          ...req.body.notes,
+          ...notesPayload,
           taskId,
         });
       } else {
         // Merge old data if you want partial merges:
         // e.g. existingNote.critical = req.body.notes.critical ?? existingNote.critical
         // Or just do a .set, which overwrites any provided fields:
-        existingNote.set(req.body.notes);
+        existingNote.set(notesPayload);
         await existingNote.save();
       }
     }
@@ -406,7 +411,11 @@ module.exports.updateTaskById = async (req, res, next) => {
       await Step.destroy({ where: { taskId } });
       for (const stepData of req.body.steps) {
         // Omit stepData.id if you want auto-increment
-        await Step.create({ ...stepData, taskId });
+        await Step.create({
+          ...stepData,
+          taskId,
+          ...(saverName ? { lastSavedBy: saverName } : {}),
+        });
       }
     }
 
@@ -580,30 +589,26 @@ module.exports.getTaskPresence = async (req, res, next) => {
   }
 };
 
-/** Join / heartbeat while viewing a task */
+/** Join / heartbeat while viewing a task — identity from JWT */
 module.exports.upsertTaskPresence = async (req, res, next) => {
   try {
     const taskId = parseInt(req.params.id, 10);
-    const { userId, name, email } = req.body || {};
-    if (!userId || !name) {
-      return next(createHttpError(400, 'userId and name are required'));
-    }
-    const users = presenceStore.upsert(taskId, { userId, name, email });
+    const users = presenceStore.upsert(taskId, {
+      userId: String(req.user.id),
+      name: req.user.name,
+      email: req.user.email,
+    });
     return res.status(200).json({ users });
   } catch (err) {
     return next(err);
   }
 };
 
-/** Leave a task */
+/** Leave a task — identity from JWT */
 module.exports.leaveTaskPresence = async (req, res, next) => {
   try {
     const taskId = parseInt(req.params.id, 10);
-    const userId = req.body?.userId || req.query.userId;
-    if (!userId) {
-      return next(createHttpError(400, 'userId is required'));
-    }
-    const users = presenceStore.leave(taskId, userId);
+    const users = presenceStore.leave(taskId, String(req.user.id));
     return res.status(200).json({ users });
   } catch (err) {
     return next(err);

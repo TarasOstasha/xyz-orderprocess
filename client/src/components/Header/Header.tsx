@@ -1,9 +1,20 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
-import { CURRENT_USER } from '../../constants';
+import { Box, Button, Typography } from '@mui/material';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { AppDispatch, RootState } from '../../store';
+import { logout } from '../../store/slices/authSlice';
 
-/** Placeholder account display — swap CURRENT_USER for real auth later */
 const Header: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login', { replace: true });
+  };
+
   return (
     <Box
       component="header"
@@ -22,13 +33,28 @@ const Header: React.FC = () => {
         XYZ Order Process
       </Typography>
 
-      <Box textAlign="right">
-        <Typography variant="caption" sx={{ color: '#aaa', display: 'block', lineHeight: 1.2 }}>
-          Signed in as
-        </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {CURRENT_USER.name}
-        </Typography>
+      <Box display="flex" alignItems="center" gap={2}>
+        <Box textAlign="right">
+          <Typography variant="caption" sx={{ color: '#aaa', display: 'block', lineHeight: 1.2 }}>
+            Signed in as
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {user?.name || '…'}
+          </Typography>
+        </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handleLogout}
+          sx={{
+            color: '#fff',
+            borderColor: '#666',
+            textTransform: 'none',
+            '&:hover': { borderColor: '#aaa', backgroundColor: 'rgba(255,255,255,0.06)' },
+          }}
+        >
+          Log out
+        </Button>
       </Box>
     </Box>
   );

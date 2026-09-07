@@ -28,6 +28,9 @@ module.exports = (sequelize, DataTypes) => {
     general: DataTypes.TEXT,
     art: DataTypes.TEXT,
     lastSavedBy: DataTypes.STRING,
+    criticalSavedBy: DataTypes.STRING,
+    generalSavedBy: DataTypes.STRING,
+    artSavedBy: DataTypes.STRING,
     taskId: DataTypes.INTEGER
   }, {
     sequelize,

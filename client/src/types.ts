@@ -26,6 +26,9 @@ export interface Task {
     general?: string;
     art?: string;
     lastSavedBy?: string;
+    criticalSavedBy?: string;
+    generalSavedBy?: string;
+    artSavedBy?: string;
   };
   Steps?: StepRow[];
 };
@@ -86,6 +89,10 @@ export interface OrderNotes {
   critical: string;
   general: string;
   art: string;
+  criticalSavedBy?: string;
+  generalSavedBy?: string;
+  artSavedBy?: string;
+  /** @deprecated use per-field *SavedBy */
   lastSavedBy?: string;
   // Optional new fields:
   pasted?: any; // for HTML or text

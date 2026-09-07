@@ -1,9 +1,11 @@
 const { Router } = require('express');
 const { tasksController } = require('../controllers');
 const { paginateTasks } = require('../middleware/paginate');
-const { upload } = require('../middleware');
+const { upload, auth } = require('../middleware');
 
 const tasksRouter = Router();
+
+tasksRouter.use(auth.authenticate);
 
 // /api/tasks
 tasksRouter

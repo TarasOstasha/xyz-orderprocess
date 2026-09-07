@@ -1,5 +1,5 @@
 import { parseISO, format, isValid } from 'date-fns';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import {
   Pagination,
   LinearProgress,
 } from '@mui/material';
-import { connect } from 'react-redux';
+import { connect, useSelector } from 'react-redux';
 import {
   ListProps,
   Task,
@@ -48,9 +48,10 @@ import OrderStepsTable from '../tables/OrderNotesTable';
 import OrderNotesPastedData from '../tables/OrderNotesPastedData';
 import PastedHistoryList from '../tables/PastedHistoryList';
 import TaskPresence from './TaskPresence';
-import { ALL_STATUSES, defaultRows, initialValues, CURRENT_USER } from '../../constants';
+import { ALL_STATUSES, defaultRows, initialValues } from '../../constants';
 import * as API from '../../api';
 import { parseStoredImages, resolveMediaUrl } from '../../utils/media';
+import { RootState } from '../../store';
 
 // Initialize steps for each task ID
 const createInitialData = (count: number): StepsByTask => {
@@ -81,6 +82,8 @@ const List: React.FC<ListProps> = ({
   setCurrentPage,
   setItemsPerPage,
 }) => {
+  const authUser = useSelector((state: RootState) => state.auth.user);
+
   // 1) Local copy of tasks so we can do immediate UI changes
   const [clientTasks, setClientTasks] = useState<Task[]>([]);
   
@@ -100,6 +103,12 @@ const List: React.FC<ListProps> = ({
 
   const [notesByTask, setNotesByTask] = useState<{ [taskId: number]: OrderNotes }>({});
   const [pastedByTask, setPastedByTask] = useState<{ [taskId: number]: PastedEntry[] }>({});
+
+  // Snapshots of last-saved content — used so "Last saved by" only updates changed fields
+  const notesBaselineRef = useRef<{
+    [taskId: number]: { critical: string; general: string; art: string };
+  }>({});
+  const stepsBaselineRef = useRef<{ [taskId: number]: StepRow[] }>({});
 
   // ========== SERVER-SIDE PAGINATION + SEARCH ==========
   useEffect(() => {
@@ -364,6 +373,23 @@ const List: React.FC<ListProps> = ({
     }
   };
 
+  // Capture baseline content when a task is selected (for per-field last-saved-by)
+  useEffect(() => {
+    if (!selectedTask) return;
+    const id = selectedTask.id;
+    if (!notesBaselineRef.current[id]) {
+      const n = selectedTask.Note || {};
+      notesBaselineRef.current[id] = {
+        critical: n.critical || '',
+        general: n.general || '',
+        art: n.art || '',
+      };
+    }
+    if (!stepsBaselineRef.current[id] && selectedTask.Steps?.length) {
+      stepsBaselineRef.current[id] = selectedTask.Steps.map((s) => ({ ...s }));
+    }
+  }, [selectedTask]);
+
   // "Save Task" => notes/steps/status (pastes already auto-save to DB)
   const handleSaveAllData = () => {
     if (!selectedTask) return;
@@ -376,10 +402,39 @@ const List: React.FC<ListProps> = ({
       images: [],
     };
     const steps = stepsByTask[taskId] || [];
-    const saver = CURRENT_USER.name;
+    const saver = authUser?.name || '';
 
-    const notesWithSaver = { ...notes, lastSavedBy: saver };
-    const stepsWithSaver = steps.map((step) => ({ ...step, lastSavedBy: saver }));
+    const baseline = notesBaselineRef.current[taskId] || {
+      critical: '',
+      general: '',
+      art: '',
+    };
+
+    const notesWithSaver: OrderNotes = {
+      ...notes,
+      criticalSavedBy:
+        notes.critical !== baseline.critical ? saver : notes.criticalSavedBy || '',
+      generalSavedBy:
+        notes.general !== baseline.general ? saver : notes.generalSavedBy || '',
+      artSavedBy: notes.art !== baseline.art ? saver : notes.artSavedBy || '',
+    };
+
+    const stepBaseline = stepsBaselineRef.current[taskId] || [];
+    const stepFingerprint = (s: StepRow) =>
+      `${s.step}|${s.date}|${s.by}|${s.notes}`;
+
+    const stepsWithSaver = steps.map((step) => {
+      const prev = stepBaseline.find((s) => s.id === step.id);
+      const changed = !prev || stepFingerprint(prev) !== stepFingerprint(step);
+      return changed ? { ...step, lastSavedBy: saver } : step;
+    });
+
+    notesBaselineRef.current[taskId] = {
+      critical: notes.critical,
+      general: notes.general,
+      art: notes.art,
+    };
+    stepsBaselineRef.current[taskId] = stepsWithSaver.map((s) => ({ ...s }));
 
     setNotesByTask((prev) => ({ ...prev, [taskId]: notesWithSaver }));
     setStepsByTask((prev) => ({ ...prev, [taskId]: stepsWithSaver }));

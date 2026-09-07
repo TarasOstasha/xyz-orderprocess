@@ -8,8 +8,8 @@ const router = require('./routes');
 const app = express();
 
 const corsOptions = {
-    origin: '*'
-}
+    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+};
 
 app.use(cors(corsOptions));
 

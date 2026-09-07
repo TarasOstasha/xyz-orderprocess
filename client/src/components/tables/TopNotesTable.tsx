@@ -11,14 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { PLACEHOLDER_LAST_SAVED_BY } from '../../constants';
-
-export interface OrderNotes {
-  critical: string;
-  general: string;
-  art: string;
-  lastSavedBy?: string;
-}
+import { OrderNotes } from '../../types';
 
 interface TopNotesTableProps {
   taskId: number;
@@ -26,12 +19,9 @@ interface TopNotesTableProps {
   setNotes: React.Dispatch<React.SetStateAction<OrderNotes>>;
 }
 
-const LastSavedLabel: React.FC<{ name?: string; placeholder: string }> = ({
-  name,
-  placeholder,
-}) => (
+const LastSavedLabel: React.FC<{ name?: string }> = ({ name }) => (
   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-    Last saved by: {name || placeholder}
+    Last saved by: {name || '—'}
   </Typography>
 );
 
@@ -64,10 +54,7 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes }) => {
                   value={notes.critical}
                   onChange={handleCriticalChange}
                 />
-                <LastSavedLabel
-                  name={notes.lastSavedBy}
-                  placeholder={PLACEHOLDER_LAST_SAVED_BY.critical}
-                />
+                <LastSavedLabel name={notes.criticalSavedBy} />
               </TableCell>
             </TableRow>
 
@@ -84,10 +71,7 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes }) => {
                   value={notes.general}
                   onChange={handleGeneralChange}
                 />
-                <LastSavedLabel
-                  name={notes.lastSavedBy}
-                  placeholder={PLACEHOLDER_LAST_SAVED_BY.general}
-                />
+                <LastSavedLabel name={notes.generalSavedBy} />
               </TableCell>
             </TableRow>
 
@@ -104,10 +88,7 @@ const TopNotesTable: React.FC<TopNotesTableProps> = ({ notes, setNotes }) => {
                   value={notes.art}
                   onChange={handleArtChange}
                 />
-                <LastSavedLabel
-                  name={notes.lastSavedBy}
-                  placeholder={PLACEHOLDER_LAST_SAVED_BY.art}
-                />
+                <LastSavedLabel name={notes.artSavedBy} />
               </TableCell>
             </TableRow>
           </TableBody>

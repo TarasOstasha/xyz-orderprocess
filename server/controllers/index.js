@@ -1,3 +1,2 @@
-// module.exports.usersController = require('./usersController');
-
+module.exports.authController = require('./authController');
 module.exports.tasksController = require('./tasksController');
