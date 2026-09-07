@@ -2,7 +2,6 @@ import axios from 'axios';
 import _ from 'lodash';
 import { SavePayload } from '../types';
 import { getStoredToken, TOKEN_KEY } from '../utils/authStorage';
-import { isDemoModeEnabled, isDemoToken } from '../utils/demoAuth';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -15,8 +14,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use((config) => {
   const token = getStoredToken();
-  // Demo sessions never call a real API for auth; avoid sending fake tokens
-  if (token && !isDemoToken(token)) {
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -26,9 +24,6 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (isDemoModeEnabled() || isDemoToken(getStoredToken())) {
-        return Promise.reject(error);
-      }
       const url = String(error.config?.url || '');
       const isAuthAttempt =
         url.includes('/auth/login') || url.includes('/auth/signup');

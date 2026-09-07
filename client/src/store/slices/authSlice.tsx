@@ -2,12 +2,6 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import * as API from '../../api';
 import { getStoredToken, persistToken } from '../../utils/authStorage';
-import {
-  getDemoUserFromToken,
-  isDemoModeEnabled,
-  isDemoToken,
-  tryDemoLogin,
-} from '../../utils/demoAuth';
 
 export interface AuthUser {
   id: number;
@@ -49,9 +43,6 @@ export const signup = createAsyncThunk(
     payload: { name: string; email: string; password: string },
     { rejectWithValue }
   ) => {
-    if (isDemoModeEnabled()) {
-      return rejectWithValue('Sign up is disabled in demo mode');
-    }
     try {
       const { data } = await API.signup(payload);
       return data as { token: string; user: AuthUser };
@@ -64,13 +55,6 @@ export const signup = createAsyncThunk(
 export const login = createAsyncThunk(
   'auth/login',
   async (payload: { email: string; password: string }, { rejectWithValue }) => {
-    // Vercel-only / no-API demo: check env credentials in the browser
-    if (isDemoModeEnabled()) {
-      const demo = tryDemoLogin(payload.email, payload.password);
-      if (demo) return demo;
-      return rejectWithValue('Invalid email or password');
-    }
-
     try {
       const { data } = await API.login(payload);
       return data as { token: string; user: AuthUser };
@@ -81,13 +65,6 @@ export const login = createAsyncThunk(
 );
 
 export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }) => {
-  const token = getStoredToken();
-  if (isDemoToken(token)) {
-    const user = getDemoUserFromToken(token!);
-    if (user) return user;
-    return rejectWithValue('Session expired');
-  }
-
   try {
     const { data } = await API.getMe();
     return data.user as AuthUser;

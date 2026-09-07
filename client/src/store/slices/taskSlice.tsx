@@ -3,7 +3,6 @@ import { AxiosError } from 'axios';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import * as API from './../../api';
 import { SavePayload, TaskError, TasksState } from '../../types';
-import { getDemoTasks, isDemoSession } from '../../utils/demoAuth';
 
 // Define Task Type
 interface Task {
@@ -241,9 +240,6 @@ const initialState: TasksState = {
 export const createTaskThunk = createAsyncThunk<Task, Task, { rejectValue: TaskError }>(
   `${TASKS_SLICE_NAME}/create`,
   async (newTask, thunkAPI) => {
-    if (isDemoSession()) {
-      return { ...newTask, id: Date.now() };
-    }
     const taskWithoutId: any = _.omit(newTask, 'id');
     try {
       const response = await API.createTask(taskWithoutId); 
@@ -273,17 +269,6 @@ export const getTasksThunk = createAsyncThunk<
 >(
   `${TASKS_SLICE_NAME}/get`,
   async ({ page, limit, search = '' }, thunkAPI) => {
-    if (isDemoSession()) {
-      const q = String(search || '').toLowerCase().trim();
-      let tasks = getDemoTasks();
-      if (q) {
-        tasks = tasks.filter((t) =>
-          [t.title, t.ship, t.Note?.critical, t.Note?.general, t.Note?.art]
-            .some((v) => String(v || '').toLowerCase().includes(q))
-        );
-      }
-      return { tasks, totalPages: 1, currentPage: page || 1 };
-    }
     try {
       const response = await API.getTasks(page, limit, search);
       return response.data;
@@ -311,9 +296,6 @@ export const removeTaskThunk = createAsyncThunk<
 >(
   'tasks/remove',
   async (taskId, thunkAPI) => {
-    if (isDemoSession()) {
-      return taskId;
-    }
     try {
       await API.removeTaskById(taskId); 
       return taskId;
@@ -338,9 +320,6 @@ export const updateTaskThunk = createAsyncThunk<
   SavePayload, // Argument type
   { rejectValue: TaskError }
 >('tasks/update', async (updatedTask, thunkAPI) => {
-  if (isDemoSession()) {
-    return updatedTask;
-  }
   try {
     //console.log(updatedTask, 'updatedTask slice')
     const response = await API.updateTask(updatedTask); // Ensure your API supports this
