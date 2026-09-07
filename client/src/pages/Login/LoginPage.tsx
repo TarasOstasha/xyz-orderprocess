@@ -13,6 +13,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { clearAuthError, login } from '../../store/slices/authSlice';
+import { isDemoModeEnabled } from '../../utils/demoAuth';
 import { LOGIN_VALIDATION_SCHEMA } from '../../utils/validationSchemas';
 
 const LoginPage: React.FC = () => {
@@ -58,6 +59,11 @@ const LoginPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary" mb={3}>
           Sign in to continue
         </Typography>
+        {isDemoModeEnabled() && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Demo mode (no server). Use the credentials configured for this site.
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -112,12 +118,14 @@ const LoginPage: React.FC = () => {
           )}
         </Formik>
 
-        <Typography variant="body2" mt={2.5} textAlign="center">
-          No account?{' '}
-          <Link component={RouterLink} to="/signup" underline="hover">
-            Sign up
-          </Link>
-        </Typography>
+        {!isDemoModeEnabled() && (
+          <Typography variant="body2" mt={2.5} textAlign="center">
+            No account?{' '}
+            <Link component={RouterLink} to="/signup" underline="hover">
+              Sign up
+            </Link>
+          </Typography>
+        )}
       </Paper>
     </Box>
   );
